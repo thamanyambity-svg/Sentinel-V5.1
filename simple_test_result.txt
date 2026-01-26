@@ -1,0 +1,5 @@
+PYTHON EXEC: /Users/macbookpro/Downloads/bot_project/venv/bin/python3
+CWD: /Users/macbookpro/Downloads/bot_project
+PATH: ['/Users/macbookpro/Downloads/bot_project', '/usr/local/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python314.zip', '/usr/local/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14', '/usr/local/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/lib-dynload', '/Users/macbookpro/Downloads/bot_project/venv/lib/python3.14/site-packages']
+SUCCESS: dotenv loaded from /Users/macbookpro/Downloads/bot_project/venv/lib/python3.14/site-packages/dotenv/__init__.py
+SUCCESS: pandas loaded from /Users/macbookpro/Downloads/bot_project/venv/lib/python3.14/site-packages/pandas/__init__.py

@@ -1,0 +1,9 @@
+DEBUG: sys.executable: /Users/macbookpro/Downloads/bot_project/.venv/bin/python3
+DEBUG: sys.path: ['/Users/macbookpro/Downloads/bot_project/bot', '/usr/local/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python314.zip', '/usr/local/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14', '/usr/local/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/lib-dynload', '/Users/macbookpro/Downloads/bot_project/.venv/lib/python3.14/site-packages']
+🚀 STARTING SENTINEL V3.10 - SIGNATURE: ALPHA-TANGO-999
+DEBUG: Attempting to load .env from: /Users/macbookpro/Downloads/bot_project/bot/.env
+DEBUG: DISCORD_BOT_TOKEN present: True
+Traceback (most recent call last):
+  File "/Users/macbookpro/Downloads/bot_project/bot/main.py", line 34, in <module>
+    from bot.config import runtime
+ModuleNotFoundError: No module named 'bot'

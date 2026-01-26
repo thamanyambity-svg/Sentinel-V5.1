@@ -1,0 +1,104 @@
+[
+  {
+    "timestamp": "2025-12-23T17:54:47.219411",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T17:55:57.634463",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T17:56:13.364590",
+    "asset": "INVALID",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T17:57:01.064798",
+    "asset": "INVALID",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T18:05:06.311649",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:20:42.420858",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:22:34.351520",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:28:54.341156",
+    "asset": "TEST",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:32:03.743794",
+    "asset": "AUDIT_TEST",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:33:32.872500",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:33:47.230495",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:34:05.158834",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:34:17.963662",
+    "asset": "INVALID",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:37:37.329981",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:38:09.332725",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:39:55.755410",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  },
+  {
+    "timestamp": "2025-12-23T20:40:20.350115",
+    "asset": "V75",
+    "side": "BUY",
+    "pnl": 0.0
+  }
+]

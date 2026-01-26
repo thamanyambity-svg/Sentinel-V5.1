@@ -1,0 +1,17 @@
+python-dotenv
+websockets
+pandas
+numpy
+certifi
+requests
+discord.py
+openai
+google-generativeai
+groq
+
+
+tensorflow
+scikit-learn
+joblib
+aiohttp
+pyngrok

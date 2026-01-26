@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Historique des trades reçus de Sentinel V5.2
+model TradeSignal {
+  id        String   @id @default(cuid())
+  ticket    Int      @unique // ID unique du trade MT5
+  symbol    String   // ex: EURUSD
+  type      String   // ex: BUY ou SELL
+  openPrice Float
+  closePrice Float
+  profit    Float    // Profit net en USD
+  duration  Int      // Durée en secondes
+  closedAt  DateTime @default(now())
+
+  @@index([closedAt])
+}
