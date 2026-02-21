@@ -46,9 +46,12 @@ class MT5DataClient:
     def __init__(self, ticks_file=None):
         self.ticks_file = ticks_file or os.path.join(
             os.getenv("MT5_FILES_PATH", "/Users/macbookpro/Library/Application Support/net.metaquotes.wine.metatrader5/drive_c/Program Files/MetaTrader 5/MQL5/Files"),
-            "ticks.json"
+            "ticks_v3.json"
         )
         logger.info(f"🔌 MT5DataClient: Connected to {self.ticks_file}")
+        
+        # MEMORY FOR VELOCITY CALCULATION
+        self.price_memory = {}
         
     async def get_headlines(self) -> list:
         """Minimal interface compatibility"""
@@ -118,6 +121,12 @@ class MT5DataClient:
             logger.error(f"❌ MT5 Data Error ({symbol}): {e}")
             return {"error": str(e)}
     
+    # Noms alternatifs pour retrouver le symbole dans ticks (broker peut utiliser R_100, Volatility 100 Index, etc.)
+    SYMBOL_ALIASES = {
+        "Volatility 100 Index": ["Volatility 100 Index", "R_100", "Volatility 100 (1s) Index", "1HZ100V"],
+        "Volatility 75 Index": ["Volatility 75 Index", "R_75", "Volatility 75 (1s) Index", "1HZ75V"],
+    }
+
     def _map_to_mt5(self, symbol: str) -> str:
         """Map user-friendly names to MT5 broker symbols (BROKER-SPECIFIC)"""
         MAPPING = {
@@ -128,7 +137,7 @@ class MT5DataClient:
         return MAPPING.get(symbol, symbol)
     
     async def _read_broker_status(self, symbol: str) -> Optional[Dict]:
-        """Read real-time tick data from ticks.json with race condition protection"""
+        """Read real-time tick data from ticks_v3.json with race condition protection"""
         try:
             if not os.path.exists(self.ticks_file):
                 logger.debug(f"Ticks file not found: {self.ticks_file}")
@@ -152,13 +161,37 @@ class MT5DataClient:
             if not ticks:
                 return None
             
-            # Extract symbol-specific data
-            # ticks.json structure: {"symbols": {"EURUSD": {"bid": 1.17, "ask": 1.18, "spread": 3, "time": 123}}}
-            symbols = ticks.get("symbols", {})
-            return symbols.get(symbol)
+            # ticks_v3.json: {"t":..., "ticks": {"Volatility 100 Index": 1122.02, "R_100": ..., ...}}
+            tick_values = ticks.get("ticks", {})
+            price = None
+            resolved_symbol = symbol
+            if symbol in tick_values:
+                price = tick_values[symbol]
+            elif symbol in self.SYMBOL_ALIASES:
+                for alias in self.SYMBOL_ALIASES[symbol]:
+                    if alias in tick_values:
+                        price = tick_values[alias]
+                        resolved_symbol = alias
+                        break
+            if price is None:
+                logger.debug(f"Symbol {symbol} not in ticks (available: {list(tick_values.keys())[:5]}...)")
+                return None
+            
+            # VELOCITY CALCULATION (Since Sentinel doesn't give previous close)
+            # We use the LAST SEEN price in memory as the "previous" reference
+            # If not in memory, we use current price (0% change initially)
+            prev_price = self.price_memory.get(symbol, price)
+            self.price_memory[symbol] = price
+            
+            return {
+                "bid": price,
+                "ask": price,  # Synthetics typically have minimal spread
+                "spread": 0,   # Sentinel doesn't export spread for synthetics
+                "previous_close": prev_price # Now we have REAL previous price!
+            }
             
         except Exception as e:
-            logger.error(f"Error reading ticks.json: {e}")
+            logger.error(f"Error reading ticks_v3.json: {e}")
             return None
     
     def _calculate_spread(self, symbol: str, spread_points: float) -> float:

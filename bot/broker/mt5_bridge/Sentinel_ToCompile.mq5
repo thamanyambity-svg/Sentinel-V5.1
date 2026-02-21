@@ -1,7 +1,8 @@
 //+------------------------------------------------------------------+
-//|                                                      Sentinel.mq5 |
-//|                                  Copyright 2026, Ambity Project |
-//|  VERSION 5.53 ALADDIN + DERIV + IFVG + TESTING MODE              |
+//|                                            Sentinel_ToCompile.mq5 |
+//|                                  Copyright 2026, Ambity Project   |
+//|  VERSION 5.53 ALADDIN + DERIV + IFVG + TESTING MODE               |
+//|  Compiler manuellement dans MetaEditor                            |
 //+------------------------------------------------------------------+
 #property copyright "Ambity"
 #property version   "5.53"
@@ -50,15 +51,15 @@ input bool           EnableScalper        = false;
 input bool           EnableProfitProtector  = true;
 
 input group "=== ALADDIN AI SETTINGS ==="
-input bool           EnableAladdinAI   = true;  // Enable AI Risk Adjustment
-input double         MinAIConfidence   = 0.70;  // Min confidence to execute
+input bool           EnableAladdinAI   = true;
+input double         MinAIConfidence   = 0.70;
 
 input group "=== DERIV VOLATILITY INDICES ==="
 input string         SymbolVol100     = "Volatility 100 Index";   // Deriv Volatility 100
-input string         SymbolVol75      = "Volatility 75 Index";    // Deriv Volatility 75
+input string         SymbolVol75      = "Volatility 75 Index";    // Deriv Volatility 75 (essayez R_75 si broker)
 
 //--- GLOBAL STATE ---
-struct SentinelStateStruct { 
+struct SentinelStateStruct {
    double            dailyHighWaterMark;
    bool              tradingEnabled;
    bool              isBusy;
@@ -66,7 +67,7 @@ struct SentinelStateStruct {
    ENUM_TUDOR_STRATEGY currentStrategy;
    double            lastTudorSignalStrength;
    string            lastTudorPattern;
-}; 
+};
 
 SentinelStateStruct SystemState;
 string watermarkFile = "Sentinel_State.dat";
@@ -79,11 +80,11 @@ string m5BarsFileTemp = "m5_bars_temp.json";
 void  Processing();
 void  S_Log(ENUM_LOG_LEVEL level, string method, string msg);
 bool  CheckTradeResult(int retcode, string comment);
-void  ScanForCommands(); 
+void  ScanForCommands();
 void  ExecutePythonTrade(string json);
 void  ExportTickData();
 void  CheckRiskManagement();
-void  LoadState(); 
+void  LoadState();
 void  SaveState();
 void  ManageOpenPositions();
 void  CloseAllPositions(string reason);
@@ -101,27 +102,27 @@ void   ExportM5Bars();
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   trade.SetExpertMagicNumber(MAGIC_NUMBER); 
-   trade.SetDeviationInPoints(10);           
-   trade.SetTypeFilling(ORDER_FILLING_IOC);  
-   
+   trade.SetExpertMagicNumber(MAGIC_NUMBER);
+   trade.SetDeviationInPoints(10);
+   trade.SetTypeFilling(ORDER_FILLING_IOC);
+
    EventSetTimer(TimerSeconds);
    LoadState();
-   
+
    SystemState.isBusy = false;
    SystemState.currentStrategy = ActiveStrategy;
    SystemState.lastTudorSignalStrength = 0;
    SystemState.lastTudorPattern = "";
-   
-   if(SystemState.dailyHighWaterMark == 0) 
+
+   if(SystemState.dailyHighWaterMark == 0)
       SystemState.dailyHighWaterMark = AccountInfoDouble(ACCOUNT_EQUITY);
-   
-   // Force Volatility 100 & 75 into Market Watch (pour export ticks)
+
+   // Force Volatility 100 & 75 dans Market Watch
    if(!SymbolSelect(SymbolVol100, true))  Print("⚠️ SymbolVol100 non trouvé: ", SymbolVol100);
    if(!SymbolSelect(SymbolVol75, true))   Print("⚠️ SymbolVol75 non trouvé: ", SymbolVol75, " (essayez R_75 si broker Deriv)");
-   
+
    Print("🏰 SENTINEL V5.53 ALADDIN + DERIV Volatility + IFVG M5 (TestingMode=" + (TestingMode ? "ON" : "OFF") + "): INITIALIZED");
-   
+
    return(INIT_SUCCEEDED);
 }
 
@@ -136,7 +137,6 @@ void OnDeinit(const int reason) {
 void OnTimer()
 {
    if(SystemState.isBusy) return;
-   
    SystemState.isBusy = true;
    Processing();
    SystemState.isBusy = false;
@@ -148,12 +148,11 @@ void OnTimer()
 void Processing()
 {
    CheckRiskManagement();
-   BroadcastStatus();  // Python bridge: positions + balance (status.json)
-   
+   BroadcastStatus();
    if(SystemState.tradingEnabled) {
       ScanForCommands();
       ExportTickData();
-      ExportM5Bars();   // IFVG strategy: M5 OHLC for Vol 100/75
+      ExportM5Bars();
       ManageOpenPositions();
    }
 }
@@ -162,52 +161,46 @@ void Processing()
 //| COMMAND HANDLER                                                  |
 //+------------------------------------------------------------------+
 void ScanForCommands() {
-   string filename; 
+   string filename;
    long handle = FileFindFirst("Command\\*.json", filename);
-   
-   if(handle != INVALID_HANDLE) { 
-      do { 
-         ProcessCommandFile("Command\\" + filename); 
-      } while(FileFindNext(handle, filename)); 
-      FileFindClose(handle); 
+   if(handle != INVALID_HANDLE) {
+      do {
+         ProcessCommandFile("Command\\" + filename);
+      } while(FileFindNext(handle, filename));
+      FileFindClose(handle);
    }
 }
 
 void ProcessCommandFile(string path) {
    int h = FileOpen(path, FILE_READ|FILE_BIN);
    if(h == INVALID_HANDLE) {
-      S_Log(S_LOG_ERROR, "ProcessCmd", "Failed to open command file: " + path);
+      S_Log(S_LOG_ERROR, "ProcessCmd", "Failed to open: " + path);
       return;
    }
-   
    ulong fsize = FileSize(h);
-   uchar buffer[]; 
+   uchar buffer[];
    ArrayResize(buffer, (int)fsize);
-   FileReadArray(h, buffer); 
+   FileReadArray(h, buffer);
    FileClose(h);
-   
+
    string json = CharArrayToString(buffer, 0, WHOLE_ARRAY, CP_UTF8);
    if(LogLevel >= S_LOG_DEBUG) S_Log(S_LOG_DEBUG, "CMD", "Received: " + json);
-   
+
    string action = ExtractJsonValue(json, "action");
-   
-   if(EnableTudorStrategies && StringFind(action, "TUDOR_") == 0) {
-      ExecuteTudorTrade(json);
-   }
-   else if(action == "TRADE")        ExecutePythonTrade(json);
+   if(EnableTudorStrategies && StringFind(action, "TUDOR_") == 0) ExecuteTudorTrade(json);
+   else if(action == "TRADE") ExecutePythonTrade(json);
    else if(action == "CLOSE_ALL") CloseAllPositions("Panic Button");
-   else if(action == "RESET_RISK") { 
-      SystemState.tradingEnabled = true; 
+   else if(action == "RESET_RISK") {
+      SystemState.tradingEnabled = true;
       SystemState.dailyHighWaterMark = AccountInfoDouble(ACCOUNT_EQUITY);
       SaveState();
-      S_Log(S_LOG_INFO, "Risk", "Risk constraints reset manually.");
+      S_Log(S_LOG_INFO, "Risk", "Risk constraints reset.");
    }
-   
    FileDelete(path);
 }
 
 //+------------------------------------------------------------------+
-//| TRADING LOGIC (ALADDIN AI ENABLED)                               |
+//| TUDOR TRADE                                                      |
 //+------------------------------------------------------------------+
 void ExecuteTudorTrade(string json) {
    string strategyType = ExtractJsonValue(json, "strategy");
@@ -216,67 +209,49 @@ void ExecuteTudorTrade(string json) {
    double signalStrength = StringToDouble(ExtractJsonValue(json, "signal_strength"));
    string pattern = ExtractJsonValue(json, "pattern");
    double stopLossPips = StringToDouble(ExtractJsonValue(json, "stop_loss_pips"));
-   
-   // --- ALADDIN AI DATA ---
    string aiRiskStr = ExtractJsonValue(json, "ai_risk_multiplier");
    string aiConfStr = ExtractJsonValue(json, "ai_confidence_score");
-   
-   double aiRiskMultiplier = 1.0; 
-   double aiConfidence = 1.0;
 
+   double aiRiskMultiplier = 1.0;
+   double aiConfidence = 1.0;
    if(EnableAladdinAI) {
       if(aiRiskStr != "") aiRiskMultiplier = StringToDouble(aiRiskStr);
       if(aiConfStr != "") aiConfidence = StringToDouble(aiConfStr);
-      
-      // AI Confidence Filter
       if(aiConfidence < MinAIConfidence) {
-         S_Log(S_LOG_INFO, "AladdinAI", "🛑 Trade Rejected by AI. Conf(" + DoubleToString(aiConfidence,2) + ") < Min(" + DoubleToString(MinAIConfidence,2) + ")");
+         S_Log(S_LOG_INFO, "AladdinAI", "🛑 Rejected Conf=" + DoubleToString(aiConfidence,2));
          return;
       }
    }
-   
-   ENUM_TUDOR_STRATEGY strategy;
-   if(strategyType == "TUDOR_REVERSAL") strategy = TUDOR_REVERSAL;
-   else if(strategyType == "TUDOR_MACRO") strategy = TUDOR_MACRO_TREND;
+
+   ENUM_TUDOR_STRATEGY strategy = TUDOR_REVERSAL;
+   if(strategyType == "TUDOR_MACRO") strategy = TUDOR_MACRO_TREND;
    else if(strategyType == "TUDOR_VOLATILITY") strategy = TUDOR_VOLATILITY_BREAKOUT;
    else if(strategyType == "TUDOR_RISK_PARITY") strategy = TUDOR_RISK_PARITY;
-   else strategy = TUDOR_REVERSAL; // Default fallback
-   
+
    if(!IsTudorPatternValid(pattern, signalStrength)) return;
-   
-   // --- ADAPTIVE RISK CALCULATION ---
+
    double currentRiskPercent = TudorRiskPercent;
-   
    if(EnableAladdinAI) {
       currentRiskPercent = TudorRiskPercent * aiRiskMultiplier;
-      // Safety Clamping (0.1% to 10%)
-      currentRiskPercent = MathMax(0.1, MathMin(10.0, currentRiskPercent)); 
-      
-      S_Log(S_LOG_INFO, "AladdinAI", "🧠 Risk Adjusted: " + DoubleToString(TudorRiskPercent, 1) + 
-                  "% -> " + DoubleToString(currentRiskPercent, 2) + "% (x" + DoubleToString(aiRiskMultiplier, 2) + ")");
+      currentRiskPercent = MathMax(0.1, MathMin(10.0, currentRiskPercent));
    }
-   
+
    double volume = CalculateTudorPositionSize(symbol, currentRiskPercent, stopLossPips);
    LogTudorSignal(strategy, pattern, signalStrength, type);
-   
    SystemState.lastTudorSignalStrength = signalStrength;
    SystemState.lastTudorPattern = pattern;
-   
-   double sl = 0;
-   double tp = 0;
-   
+
+   double sl = 0, tp = 0;
    if(stopLossPips > 0) {
       long digits = SymbolInfoInteger(symbol, SYMBOL_DIGITS);
       double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
       double pointsPerPip = (digits == 3 || digits == 5) ? 10 : 1;
       double slDistancePoints = stopLossPips * pointsPerPip * point;
-      
       if(type == "BUY") {
          double askPrice = SymbolInfoDouble(symbol, SYMBOL_ASK);
          sl = askPrice - slDistancePoints;
          if(sl < askPrice) trade.Buy(volume, symbol, askPrice, sl, tp, "Aladdin " + pattern);
-      }
-      else if(type == "SELL") {
+      } else if(type == "SELL") {
          double bidPrice = SymbolInfoDouble(symbol, SYMBOL_BID);
          sl = bidPrice + slDistancePoints;
          if(sl > bidPrice) trade.Sell(volume, symbol, bidPrice, sl, tp, "Aladdin " + pattern);
@@ -288,47 +263,34 @@ void ExecutePythonTrade(string json) {
    string symbol = ExtractJsonValue(json, "symbol");
    string type = ExtractJsonValue(json, "type");
    double volume = StringToDouble(ExtractJsonValue(json, "volume"));
-   
    if(volume > MaxLotSize) volume = MaxLotSize;
    if(!SystemState.tradingEnabled) return;
-
    if(type == "BUY") trade.Buy(volume, symbol, SymbolInfoDouble(symbol, SYMBOL_ASK));
    else if(type == "SELL") trade.Sell(volume, symbol, SymbolInfoDouble(symbol, SYMBOL_BID));
 }
 
 double CalculateTudorPositionSize(string symbol, double riskPercent, double stopLossPips) {
    if(stopLossPips <= 0) return 0.01;
-   
    double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY);
    double riskAmount = accountEquity * riskPercent / 100.0;
-   
    double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
    double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-   
    if(tickValue == 0 || tickSize == 0) return 0.01;
-   
    long digits = SymbolInfoInteger(symbol, SYMBOL_DIGITS);
    double pointsPerPip = (digits == 2 || digits == 3) ? 1 : 10;
-   
    double pointValue = tickValue / tickSize;
    double pipValue = pointValue * pointsPerPip;
-   
    double volume = riskAmount / (stopLossPips * pipValue);
-   
    double minLot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
    double maxLot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
    double lotStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
-   
    volume = MathMax(minLot, MathMin(maxLot, volume));
    volume = MathRound(volume / lotStep) * lotStep;
-   
    return volume;
 }
 
 bool IsTudorPatternValid(string pattern, double strength) {
-   if(StringLen(pattern) < 3) return false;
-   if(strength < 0.6) return false;
-   return true;
+   return (StringLen(pattern) >= 3 && strength >= 0.6);
 }
 
 void LogTudorSignal(ENUM_TUDOR_STRATEGY strategy, string pattern, double strength, string action) {
@@ -337,127 +299,91 @@ void LogTudorSignal(ENUM_TUDOR_STRATEGY strategy, string pattern, double strengt
 
 void ManageOpenPositions() {
    if(!EnableProfitProtector) return;
-   
    for(int i=PositionsTotal()-1; i>=0; i--) {
-      if(PositionSelectByTicket(PositionGetTicket(i))) {
-         if(PositionGetInteger(POSITION_MAGIC) != MAGIC_NUMBER) continue;
-
+      if(PositionSelectByTicket(PositionGetTicket(i)) && PositionGetInteger(POSITION_MAGIC) == MAGIC_NUMBER) {
          double profit = PositionGetDouble(POSITION_PROFIT);
          double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
          double sl = PositionGetDouble(POSITION_SL);
-         
-         if(profit >= 5.0 && MathAbs(sl - openPrice) > _Point) {
-            trade.PositionModify(PositionGetInteger(POSITION_TICKET), openPrice, 0); 
-         }
+         if(profit >= 5.0 && MathAbs(sl - openPrice) > _Point)
+            trade.PositionModify(PositionGetInteger(POSITION_TICKET), openPrice, 0);
       }
    }
 }
 
 void CheckRiskManagement() {
    if(!SystemState.tradingEnabled) return;
-   if(TestingMode) return;  // Pas de Kill Switch en mode test
-   
+   if(TestingMode) return;
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    if(equity > SystemState.dailyHighWaterMark) SystemState.dailyHighWaterMark = equity;
-   
    double drawdown = SystemState.dailyHighWaterMark - equity;
    if(drawdown > MaxDailyLoss) {
       CloseAllPositions("Hard Stop");
-      SystemState.tradingEnabled = false; 
+      SystemState.tradingEnabled = false;
       SaveState();
    }
 }
 
-bool CheckTradeResult(int retcode, string comment) {
-   if(retcode == TRADE_RETCODE_DONE || retcode == TRADE_RETCODE_PLACED) return true;
-   S_Log(S_LOG_ERROR, "TradeRet", "Fail " + comment);
-   return false;
-}
-
 void ExportTickData() {
-   // Deriv Volatility 100/75 en premier, puis Forex/autres (noms configurables en inputs)
    string symbols[];
    ArrayResize(symbols, 6);
-   symbols[0] = SymbolVol100;   // Volatility 100 Index (Deriv)
-   symbols[1] = SymbolVol75;    // Volatility 75 Index (Deriv)
+   symbols[0] = SymbolVol100;
+   symbols[1] = SymbolVol75;
    symbols[2] = "EURUSD";
    symbols[3] = "GOLD";
    symbols[4] = "BTCUSD";
    symbols[5] = "ETHUSD";
-   
-   // Calculate PnL for AI Feedback
+
    double totalPnL = 0;
    for(int i=PositionsTotal()-1; i>=0; i--) {
-       if(PositionSelectByTicket(PositionGetTicket(i))) {
-           if(PositionGetInteger(POSITION_MAGIC) == MAGIC_NUMBER)
-               totalPnL += PositionGetDouble(POSITION_PROFIT);
-       }
+      if(PositionSelectByTicket(PositionGetTicket(i)) && PositionGetInteger(POSITION_MAGIC) == MAGIC_NUMBER)
+         totalPnL += PositionGetDouble(POSITION_PROFIT);
    }
 
-   string json = "{\"t\":" + IntegerToString(TimeCurrent()) + 
+   string json = "{\"t\":" + IntegerToString(TimeCurrent()) +
                  ",\"account_pnl\":" + DoubleToString(totalPnL, 2) +
                  ",\"equity\":" + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2) +
-                 ",\"strategy\":\"" + EnumToString(SystemState.currentStrategy) + 
-                 "\",\"last_pattern\":\"" + SystemState.lastTudorPattern + 
-                 "\",\"signal_strength\":" + DoubleToString(SystemState.lastTudorSignalStrength, 2) + 
+                 ",\"strategy\":\"" + EnumToString(SystemState.currentStrategy) + "\"" +
+                 ",\"last_pattern\":\"" + SystemState.lastTudorPattern + "\"" +
+                 ",\"signal_strength\":" + DoubleToString(SystemState.lastTudorSignalStrength, 2) +
                  ",\"ticks\":{";
-   
    bool firstTick = true;
    for(int i=0; i<ArraySize(symbols); i++) {
-      if(!SymbolInfoInteger(symbols[i], SYMBOL_SELECT)) continue;  // Skip if not in Market Watch
+      if(!SymbolInfoInteger(symbols[i], SYMBOL_SELECT)) continue;
       if(!firstTick) json += ",";
       firstTick = false;
       json += "\"" + symbols[i] + "\":" + DoubleToString(SymbolInfoDouble(symbols[i], SYMBOL_BID), (int)SymbolInfoInteger(symbols[i], SYMBOL_DIGITS));
    }
    json += "}}";
-   
+
    int h = FileOpen(tickFileTemp, FILE_WRITE|FILE_ANSI|FILE_TXT);
-   if(h != INVALID_HANDLE) { 
-      FileWriteString(h, json); 
+   if(h != INVALID_HANDLE) {
+      FileWriteString(h, json);
       FileClose(h);
-      
-      // FIX: Wine/Mac filesystems sometimes struggle with atomic overwrite (FILE_REWRITE)
-      // STRATEGY: Explicit Delete -> Move from Temp
-      if(FileIsExist(tickFile)) {
-          if(!FileDelete(tickFile)) {
-             // If we can't delete, it's locked by Python or OS. Skip this tick.
-             return; 
-          }
-      }
-      
-      if(FileMove(tickFileTemp, 0, tickFile, 0)) { // 0 = No Flags needed if target is gone
-          // Success
-      } else {
-          S_Log(S_LOG_ERROR, "Export", "Failed to move file (Err: " + IntegerToString(GetLastError()) + ")");
-      }
+      if(FileIsExist(tickFile) && !FileDelete(tickFile)) return;
+      FileMove(tickFileTemp, 0, tickFile, 0);
    }
 }
 
 void CloseAllPositions(string reason) {
    for(int i=PositionsTotal()-1; i>=0; i--) {
       ulong ticket = PositionGetTicket(i);
-      if(PositionGetInteger(POSITION_MAGIC) == MAGIC_NUMBER) trade.PositionClose(ticket);
+      if(PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC) == MAGIC_NUMBER)
+         trade.PositionClose(ticket);
    }
 }
 
-//+------------------------------------------------------------------+
-//| EXPORT M5 BARS (IFVG strategy - Python reads m5_bars.json)       |
-//+------------------------------------------------------------------+
 void ExportM5Bars() {
    string syms[];
    ArrayResize(syms, 2);
    syms[0] = SymbolVol100;
    syms[1] = SymbolVol75;
-   
    string json = "{\"updated\":" + IntegerToString(TimeCurrent()) + ",\"symbols\":{";
    bool firstSym = true;
    for(int s=0; s<ArraySize(syms); s++) {
       if(!SymbolInfoInteger(syms[s], SYMBOL_SELECT)) continue;
-      
       MqlRates rates[];
       int copied = CopyRates(syms[s], PERIOD_M5, 0, 100, rates);
       if(copied <= 0) continue;
-      
       if(!firstSym) json += ",";
       firstSym = false;
       json += "\"" + syms[s] + "\":[";
@@ -465,13 +391,12 @@ void ExportM5Bars() {
       for(int i=copied-1; i>=0; i--) {
          if(i < copied-1) json += ",";
          json += StringFormat("{\"t\":%d,\"o\":%.*f,\"h\":%.*f,\"l\":%.*f,\"c\":%.*f}",
-                             (int)rates[i].time, digits, rates[i].open, digits, rates[i].high,
-                             digits, rates[i].low, digits, rates[i].close);
+             (int)rates[i].time, digits, rates[i].open, digits, rates[i].high,
+             digits, rates[i].low, digits, rates[i].close);
       }
       json += "]";
    }
    json += "}}";
-   
    int h = FileOpen(m5BarsFileTemp, FILE_WRITE|FILE_ANSI|FILE_TXT);
    if(h != INVALID_HANDLE) {
       FileWriteString(h, json);
@@ -481,42 +406,27 @@ void ExportM5Bars() {
    }
 }
 
-//+------------------------------------------------------------------+
-//| BROADCAST STATUS (Python Bridge - status.json)                    |
-//+------------------------------------------------------------------+
 void BroadcastStatus() {
-   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   
    string json = "{\"updated\":" + IntegerToString(TimeCurrent()) +
-                 ",\"balance\":" + DoubleToString(balance, 2) +
-                 ",\"equity\":" + DoubleToString(equity, 2) +
+                 ",\"balance\":" + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2) +
+                 ",\"equity\":" + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2) +
                  ",\"trading_enabled\":" + (SystemState.tradingEnabled ? "true" : "false") +
                  ",\"positions\":[";
-   
-   int total = PositionsTotal();
    int count = 0;
-   for(int i=0; i<total; i++) {
+   for(int i=0; i<PositionsTotal(); i++) {
       ulong ticket = PositionGetTicket(i);
       if(PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC) == MAGIC_NUMBER) {
          if(count > 0) json += ",";
          json += StringFormat("{\"ticket\":%d,\"symbol\":\"%s\",\"type\":\"%s\",\"volume\":%.2f,\"profit\":%.2f,\"price\":%.5f}",
-                             (long)ticket,
-                             PositionGetString(POSITION_SYMBOL),
-                             (PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY ? "BUY" : "SELL"),
-                             PositionGetDouble(POSITION_VOLUME),
-                             PositionGetDouble(POSITION_PROFIT),
-                             PositionGetDouble(POSITION_PRICE_OPEN));
+             (long)ticket, PositionGetString(POSITION_SYMBOL),
+             (PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY ? "BUY" : "SELL"),
+             PositionGetDouble(POSITION_VOLUME), PositionGetDouble(POSITION_PROFIT), PositionGetDouble(POSITION_PRICE_OPEN));
          count++;
       }
    }
    json += "]}";
-   
    int h = FileOpen("status.json", FILE_WRITE|FILE_TXT|FILE_ANSI);
-   if(h != INVALID_HANDLE) {
-      FileWriteString(h, json);
-      FileClose(h);
-   }
+   if(h != INVALID_HANDLE) { FileWriteString(h, json); FileClose(h); }
 }
 
 void S_Log(ENUM_LOG_LEVEL level, string method, string msg) {
@@ -525,21 +435,21 @@ void S_Log(ENUM_LOG_LEVEL level, string method, string msg) {
 
 void SaveState() {
    int h = FileOpen(watermarkFile, FILE_WRITE|FILE_BIN);
-   if(h!=INVALID_HANDLE) { 
-      FileWriteDouble(h, SystemState.dailyHighWaterMark); 
+   if(h != INVALID_HANDLE) {
+      FileWriteDouble(h, SystemState.dailyHighWaterMark);
       FileWriteInteger(h, (int)SystemState.tradingEnabled);
       FileWriteInteger(h, (int)SystemState.currentStrategy);
-      FileClose(h); 
+      FileClose(h);
    }
 }
 
 void LoadState() {
    int h = FileOpen(watermarkFile, FILE_READ|FILE_BIN);
-   if(h!=INVALID_HANDLE) { 
-      SystemState.dailyHighWaterMark = FileReadDouble(h); 
+   if(h != INVALID_HANDLE) {
+      SystemState.dailyHighWaterMark = FileReadDouble(h);
       SystemState.tradingEnabled = (bool)FileReadInteger(h);
       SystemState.currentStrategy = (ENUM_TUDOR_STRATEGY)FileReadInteger(h);
-      FileClose(h); 
+      FileClose(h);
    } else {
       SystemState.tradingEnabled = true;
       SystemState.currentStrategy = ActiveStrategy;
@@ -549,26 +459,16 @@ void LoadState() {
 string ExtractJsonValue(string source, string key) {
    int key_pos = StringFind(source, "\"" + key + "\""); if(key_pos == -1) return "";
    int colon_pos = StringFind(source, ":", key_pos); if(colon_pos == -1) return "";
-   
-   int start = StringFind(source, "\"", colon_pos); 
-   
-   // Handle Number/Boolean (no quotes)
-   if(start == -1) { 
-      start = colon_pos + 1; 
+   int start = StringFind(source, "\"", colon_pos);
+   if(start == -1) {
+      start = colon_pos + 1;
       int end_comma = StringFind(source, ",", start);
       int end_brace = StringFind(source, "}", start);
-      int end = -1;
-      
-      if(end_comma != -1 && end_brace != -1) end = MathMin(end_comma, end_brace);
-      else if(end_comma != -1) end = end_comma;
-      else if(end_brace != -1) end = end_brace;
-      
+      int end = (end_comma != -1 && end_brace != -1) ? MathMin(end_comma, end_brace) : (end_comma != -1 ? end_comma : end_brace);
       if(end == -1) return "";
-      return StringSubstr(source, start, end - start); 
+      return StringSubstr(source, start, end - start);
    }
-   
-   // Handle String (quotes)
-   int end = StringFind(source, "\"", start + 1); 
+   int end = StringFind(source, "\"", start + 1);
    if(end == -1) return "";
    return StringSubstr(source, start + 1, end - start - 1);
 }

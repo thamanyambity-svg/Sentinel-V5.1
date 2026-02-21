@@ -41,7 +41,7 @@ class ExperienceLogger:
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
 
-    def log_signal(self, asset, side, analysis_data, global_risk):
+    def log_signal(self, asset, side, analysis_data, global_risk, strategy="SENTINEL_V5"):
         """
         Records the initial signal and associated market state.
         Returns a unique signal_id to be used for outcome tracking.
@@ -53,8 +53,8 @@ class ExperienceLogger:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            # Prepare features
-            regime = analysis_data.get('trend', 'UNKNOWN')
+            # Prepare features (regime pour QuantTrainer: RANGE_CALM, TREND_STABLE)
+            regime = analysis_data.get('regime', analysis_data.get('trend', 'UNKNOWN'))
             price = analysis_data.get('price', 0)
             change_pct = analysis_data.get('change_percent', 0)
             spread = analysis_data.get('spread', 0)
@@ -75,7 +75,7 @@ class ExperienceLogger:
                 signal_id,
                 timestamp,
                 asset,
-                "SENTINEL_V5",
+                strategy,
                 side,
                 change_pct, # Use change_pct as a simple score
                 0, # Future: Add real RSI
