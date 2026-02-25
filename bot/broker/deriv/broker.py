@@ -8,7 +8,7 @@ from bot.broker.deriv.validator import validate_response
 from bot.broker.deriv.client import DerivClient
 from bot.broker.deriv.config import DERIV_API_MODE
 from bot.state.active_trades import add_active_trade
-from bot.bridge.mt5_interface import MT5Bridge
+from bot.bridge.mt5_interface_v2 import MT5Bridge
 import os
 import time
 import logging

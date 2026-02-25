@@ -1,0 +1,100 @@
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur NZDUSD...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:32:47] 📥 Entrée de Signal : USDCAD | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:32:47]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur USDCAD...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:32:50] 📥 Entrée de Signal : USDSEK | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:32:50]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur USDSEK...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:32:53] 📥 Entrée de Signal : Apple | BUY
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:32:53]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur Apple...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:32:54] 📥 Entrée de Signal : GOLD | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:32:54]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur GOLD...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:32:56] 📥 Entrée de Signal : Nvidia | BUY
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:32:56]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur Nvidia...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:32:58] 📥 Entrée de Signal : CADCHF | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:32:58]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur CADCHF...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:00] 📥 Entrée de Signal : ETHUSD | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:00]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur ETHUSD...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:01] 📥 Entrée de Signal : EURUSD | BUY
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:01]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur EURUSD...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:05] 📥 Entrée de Signal : GBPUSD | BUY
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:05]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur GBPUSD...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:08] 📥 Entrée de Signal : USDCHF | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:08]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur USDCHF...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:11] 📥 Entrée de Signal : USDJPY | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:11]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur USDJPY...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:16] 📥 Entrée de Signal : USDCNH | SELL
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:16]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur USDCNH...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:20] 📥 Entrée de Signal : AUDUSD | BUY
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:20]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur AUDUSD...
+[SOVEREIGN] 🛑 VERDICT : IGNORE | Kelly Load : 0.00x
+[SOVEREIGN] ✍️ Intelligence : Arbitrage : Probabilité Bayésienne insuffisante.
+[20:33:21] 📥 Entrée de Signal : NZDUSD | BUY
+[VANGUARD] 📡 Cycle de Vectorisation Sémantique... [20:33:21]
+[VANGUARD] 📊 SPM (Polarité) : 0.464 | Mood : BULLISH (CONFLUENCE)
+
+[SOVEREIGN] 🏛️ Inférence Bayésienne en cours sur NZDUSD...

@@ -121,6 +121,16 @@ int OnInit()
    if(!SymbolSelect(SymbolVol100, true))  Print("⚠️ SymbolVol100 non trouvé: ", SymbolVol100);
    if(!SymbolSelect(SymbolVol75, true))   Print("⚠️ SymbolVol75 non trouvé: ", SymbolVol75, " (essayez R_75 si broker Deriv)");
 
+   // DIAGNOSTIC: où l'EA lit les commandes (à comparer avec MT5_FILES_PATH du bot Python)
+   string dataPath = TerminalInfoString(TERMINAL_DATA_PATH);
+   Print("📂 EA FILES PATH (copier dans .env MT5_FILES_PATH si différent): ", dataPath + "MQL5\\Files");
+   if(TestingMode && !SystemState.tradingEnabled) {
+      SystemState.tradingEnabled = true;
+      SaveState();
+      Print("📂 tradingEnabled: was false -> forced true (TestingMode)");
+   } else
+      Print("📂 tradingEnabled: ", (SystemState.tradingEnabled ? "true" : "false"));
+
    Print("🏰 SENTINEL V5.53 ALADDIN + DERIV Volatility + IFVG M5 (TestingMode=" + (TestingMode ? "ON" : "OFF") + "): INITIALIZED");
 
    return(INIT_SUCCEEDED);
@@ -163,11 +173,15 @@ void Processing()
 void ScanForCommands() {
    string filename;
    long handle = FileFindFirst("Command\\*.json", filename);
+   int count = 0;
    if(handle != INVALID_HANDLE) {
       do {
          ProcessCommandFile("Command\\" + filename);
+         count++;
       } while(FileFindNext(handle, filename));
       FileFindClose(handle);
+      if(count > 0 && LogLevel >= S_LOG_INFO)
+         Print("📥 Processed ", count, " command(s)");
    }
 }
 
@@ -237,6 +251,9 @@ void ExecuteTudorTrade(string json) {
    }
 
    double volume = CalculateTudorPositionSize(symbol, currentRiskPercent, stopLossPips);
+   if(StringFind(symbol, "Volatility") >= 0 && volume < 0.5) volume = 0.5;
+   // Vol 75: plafonner à 0.5 max (contrat énorme, éviter pertes explosives)
+   if(StringFind(symbol, "Volatility 75") >= 0 && volume > 0.5) volume = 0.5;
    LogTudorSignal(strategy, pattern, signalStrength, type);
    SystemState.lastTudorSignalStrength = signalStrength;
    SystemState.lastTudorPattern = pattern;
@@ -247,15 +264,39 @@ void ExecuteTudorTrade(string json) {
       double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
       double pointsPerPip = (digits == 3 || digits == 5) ? 10 : 1;
       double slDistancePoints = stopLossPips * pointsPerPip * point;
+      // retcode 10016 = Invalid stops: respecter la distance min broker (SYMBOL_TRADE_STOPS_LEVEL)
+      long stopsLevel = SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+      double minDist = (double)stopsLevel * point;
+      if(minDist > 0 && slDistancePoints < minDist) slDistancePoints = minDist;
+      // Arrondir le prix SL au step du symbole
+      double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+      if(tickSize <= 0) tickSize = point;
+      bool ok = false;
       if(type == "BUY") {
          double askPrice = SymbolInfoDouble(symbol, SYMBOL_ASK);
          sl = askPrice - slDistancePoints;
-         if(sl < askPrice) trade.Buy(volume, symbol, askPrice, sl, tp, "Aladdin " + pattern);
+         sl = MathFloor(sl / tickSize) * tickSize;
+         if(sl >= askPrice) sl = askPrice - minDist;
+         if(sl < askPrice) ok = trade.Buy(volume, symbol, askPrice, sl, tp, "Aladdin " + pattern);
       } else if(type == "SELL") {
          double bidPrice = SymbolInfoDouble(symbol, SYMBOL_BID);
          sl = bidPrice + slDistancePoints;
-         if(sl > bidPrice) trade.Sell(volume, symbol, bidPrice, sl, tp, "Aladdin " + pattern);
+         sl = MathCeil(sl / tickSize) * tickSize;
+         if(sl <= bidPrice) sl = bidPrice + minDist;
+         if(sl > bidPrice) ok = trade.Sell(volume, symbol, bidPrice, sl, tp, "Aladdin " + pattern);
       }
+      bool usedFallback = false;
+      // Vol 75: NE JAMAIS ouvrir sans SL (contrat énorme, pertes >600$)
+      bool allowNoSL = (StringFind(symbol, "Volatility 75") < 0);
+      if(!ok && trade.ResultRetcode() == 10016 && allowNoSL) {
+         // Fallback: ouvrir SANS SL uniquement pour Vol 100 (risque maîtrisé)
+         if(type == "BUY") ok = trade.Buy(volume, symbol, SymbolInfoDouble(symbol, SYMBOL_ASK), 0, 0, "Aladdin " + pattern);
+         else if(type == "SELL") ok = trade.Sell(volume, symbol, SymbolInfoDouble(symbol, SYMBOL_BID), 0, 0, "Aladdin " + pattern);
+         if(ok) { usedFallback = true; Print("✅ Trade sent (sans SL): ", type, " ", symbol, " vol=", volume); }
+      } else if(!ok && trade.ResultRetcode() == 10016 && !allowNoSL)
+         Print("❌ Vol 75: Refus d'ouvrir sans SL (risque trop élevé)");
+      if(!ok) Print("❌ Trade failed: ", type, " ", symbol, " vol=", volume, " retcode=", trade.ResultRetcode(), " ", trade.ResultComment());
+      else if(!usedFallback && LogLevel >= S_LOG_INFO) Print("✅ Trade sent: ", type, " ", symbol, " vol=", volume);
    }
 }
 

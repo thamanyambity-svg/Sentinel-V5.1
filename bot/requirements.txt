@@ -15,3 +15,15 @@ scikit-learn
 joblib
 aiohttp
 pyngrok
+psutil
+pyzmq
+numba
+sqlalchemy
+fastapi
+uvicorn
+prometheus_client
+redis
+psycopg2-binary
+pytest
+bandit
+vectorbt

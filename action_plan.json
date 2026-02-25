@@ -1,0 +1,10 @@
+{
+    "timestamp": "2026-02-25T11:57:17.748104",
+    "asset": "ETHUSD",
+    "spm_score": 0.464,
+    "nexus_prob": 4.551430174615234e-05,
+    "z_score": 1.232,
+    "decision": "IGNORE",
+    "kelly_risk": 0.0,
+    "reasoning": "\ud83d\udea8 KILL SWITCH NEXUS ACTIV\u00c9 (Pr\u00e9cision d\u00e9grad\u00e9e)."
+}

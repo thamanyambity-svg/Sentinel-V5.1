@@ -2,7 +2,10 @@ import os
 import json
 import time
 import sys
-import psutil # Assuming available, or fallback to os.kill
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 LOCK_FILE = "trading_bot.lock"
 MT5_STATUS = "/Users/macbookpro/Library/Application Support/net.metaquotes.wine.metatrader5/drive_c/Program Files/MetaTrader 5/MQL5/Files/status.json"

@@ -1,12 +1,56 @@
-
 import asyncio
 import json
 import ssl
 import websockets
 
-TOKEN = "vf4ttS2A1PA9XbW"
-APP_ID = "1089"
+import os
+from dotenv import load_dotenv
 
+import logging
+import sys
+from datetime import datetime
+
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('bot_operations.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+load_dotenv()
+TOKEN = os.getenv("DERIV_TOKEN")
+APP_ID = os.getenv("DERIV_APP_ID")
+
+async def check_with_retry(func, max_retries=3):
+    """Exécute une fonction avec logique de retry exponentielle"""
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Tentative {attempt + 1}/{max_retries}")
+            await func()
+            logger.info("✅ Check réussi")
+            return True
+            
+        except ConnectionError as e:
+            logger.error(f"❌ Erreur de connexion: {e}")
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                logger.warning(f"⏳ Attente de {wait_time}s avant retry...")
+                await asyncio.sleep(wait_time)
+            else:
+                logger.critical("🚨 Échec après toutes les tentatives")
+                raise
+        except Exception as e:
+            logger.error(f"❌ Erreur inattendue: {e}")
+            if attempt < max_retries - 1:
+                 await asyncio.sleep(1)
+            else:
+                 raise
+
+# Renaming main to check for consistency with Retry Logic
 async def check():
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
@@ -14,7 +58,7 @@ async def check():
     
     uri = f"wss://ws.derivws.com/websockets/v3?app_id={APP_ID}"
     
-    print(f"Connecting to Deriv...")
+    logger.info(f"Connecting to Deriv...")
     async with websockets.connect(uri, ssl=ssl_context) as ws:
         # Auth
         await ws.send(json.dumps({"authorize": TOKEN}))
@@ -54,6 +98,9 @@ async def check():
                 pnl = sell - buy
                 time_code = t.get('purchase_time', t.get('transaction_time', 'N/A'))
                 print(f" - {time_code} | {t.get('shortcode', 'N/A')} | Buy: {buy} | Sell: {sell} | PnL: {pnl}")
-        
 
-asyncio.run(check())
+async def main_wrapper():
+    await check_with_retry(check)
+
+if __name__ == "__main__":
+    asyncio.run(main_wrapper())

@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import time
+from collections import deque
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
@@ -29,6 +30,9 @@ from bot.state.risk.rules.engine import can_execute_trade, register_trade
 from bot.state.risk.limits import reset_daily_limits
 from bot.core.process_lock import acquire as lock_acquire, release as lock_release
 from bot.strategy.ifvg_volatility import get_ifvg_signal
+from bot.strategy.volatility_rider import get_volatility_rider_signal
+from bot.strategy.rsi_extreme_reversal import get_rsi_extreme_signal
+from bot.strategy.volatility_utils import get_atr_sl_pips, get_atr_risk_multiplier
 
 # Initialize Monitor
 monitor = ResourceMonitor()
@@ -39,12 +43,14 @@ MAX_DAILY_DD_PCT = float(os.getenv("MAX_DAILY_DD_PCT", "0.05"))
 EA_HEARTBEAT_TIMEOUT_SEC = int(os.getenv("EA_HEARTBEAT_TIMEOUT_SEC", "90"))
 # Mode test: pas de stop trading daily (kill switch + limite trades/jour désactivés)
 TESTING_MODE = os.getenv("TESTING_MODE", "1").strip().lower() in ("1", "true", "yes")
-# Max positions simultanées par actif (agressif = 7)
-MAX_POSITIONS_PER_ASSET = int(os.getenv("MAX_POSITIONS_PER_ASSET", "7"))
+# Max positions simultanées par actif (5 = plus conservateur, 7 = agressif)
+MAX_POSITIONS_PER_ASSET = int(os.getenv("MAX_POSITIONS_PER_ASSET", "5"))
 # Scalping précis: objectif TP plus serré (0.0003 = ~3 pips équiv.)
 SCALP_TARGET_PCT = float(os.getenv("SCALP_TARGET_PCT", "0.0003"))
 # SL Volatility par défaut (réfléchi, serré pour scalping)
 DEFAULT_SL_PIPS_VOLATILITY = int(os.getenv("DEFAULT_SL_PIPS_VOLATILITY", "40"))
+# Cycles sans mouvement de prix = données figées (marché fermé ou stale)
+STALE_PRICE_CYCLES = int(os.getenv("STALE_PRICE_CYCLES", "5"))
 
 # Configuration V5.5 - Weekend Trading (Deriv Synthetics)
 FOREX_PAIRS = []  # Désactivé le weekend
@@ -52,11 +58,8 @@ GOLD = []
 STOCKS = []
 CRYPTO = []
 
-# DERIV SYNTHETIC INDICES (24/7 Trading)
-SYNTHETIC_INDICES = [
-    "Volatility 100 Index",  # Volatilité modérée, bon pour débuter
-    "Volatility 75 Index",   # Volatilité moyenne
-]
+# DERIV SYNTHETIC INDICES — Vol 100 uniquement (Vol 75 retiré définitivement)
+SYNTHETIC_INDICES = ["Volatility 100 Index"]
 
 ALL_ASSETS = FOREX_PAIRS + GOLD + STOCKS + CRYPTO + SYNTHETIC_INDICES
 
@@ -111,6 +114,9 @@ async def run_bot():
 
     # Tracking for state
     known_positions = {}  # ticket -> {symbol, price_open, side, volume, last_profit}
+    last_order_sent_at = {}  # asset -> timestamp (cooldown pour éviter spam)
+    price_history = {}  # asset -> deque des (timestamp, price) pour filtre données figées
+    ORDER_COOLDOWN_SEC = 90  # pas plus d'un ordre par actif toutes les 90 s
     last_stock_scan = 0
     balance_start_of_day = None
     last_day_utc = None
@@ -240,50 +246,95 @@ async def run_bot():
                     change = analysis.get('change_percent', 0)
                     trend = analysis.get('trend')
 
-                    # --- IFVG strategy for Volatility indices (M5) ---
-                    use_ifvg = asset in SYNTHETIC_INDICES and asset in m5_bars and len(m5_bars.get(asset, [])) >= 20
+                    # --- Filtre données figées: ne pas trader si prix inchangé N cycles ---
+                    if asset not in price_history:
+                        price_history[asset] = deque(maxlen=STALE_PRICE_CYCLES + 2)
+                    price_history[asset].append((current_time, price))
+                    if len(price_history[asset]) >= STALE_PRICE_CYCLES:
+                        recent = list(price_history[asset])[-STALE_PRICE_CYCLES:]
+                        if len(set(round(p[1], 5) for p in recent)) == 1:
+                            logger.info(f"⏭️ {asset}: Données figées (prix identique {STALE_PRICE_CYCLES} cycles), skip")
+                            continue
+
+                    # --- Volatility 100: Volatility Rider (M10) prioritaire, sinon IFVG, sinon ALADDIN ---
+                    use_synthetics = asset in SYNTHETIC_INDICES and asset in m5_bars
                     signal = None
                     sl_pips = 50
                     ai_confidence = 0.75
                     strategy_name = "ALADDIN_SCALP"
                     pattern_extra = ""
+                    point = 0.01 if "Volatility" in asset else 0.01
 
-                    if use_ifvg:
-                        ifvg_candles = m5_bars[asset]
-                        point = 0.01 if "Volatility" in asset else 0.01
-                        ifvg_sig = get_ifvg_signal(asset, ifvg_candles, point=point)
-                        if ifvg_sig:
-                            signal = ifvg_sig["side"]
-                            sl_pips = ifvg_sig.get("sl_pips", 50)
-                            ai_confidence = ifvg_sig.get("confidence", 0.75)
-                            strategy_name = ifvg_sig.get("strategy", "IFVG_SCALP")
-                            pattern_extra = ifvg_sig.get("reason", "IFVG_M5")
-                            logger.info(f"📐 IFVG {asset}: {signal} | SL {sl_pips} pips | {pattern_extra}")
+                    if use_synthetics:
+                        candles = m5_bars[asset]
+                        # 1. Volatility Rider (Vol 100 uniquement, M10 agrégé)
+                        vr_sig = get_volatility_rider_signal(asset, candles, point=point)
+                        if vr_sig:
+                            signal = vr_sig["side"]
+                            sl_pips = vr_sig.get("sl_pips", 50)
+                            ai_confidence = vr_sig.get("confidence", 0.78)
+                            strategy_name = vr_sig.get("strategy", "VOLATILITY_RIDER")
+                            pattern_extra = vr_sig.get("reason", "VOLARIDER_21")
+                            logger.info(f"📐 VolaRider {asset}: {signal} | SL {sl_pips} pips | {pattern_extra}")
+                        # 2. Fallback IFVG
+                        if not signal and len(candles) >= 20:
+                            ifvg_sig = get_ifvg_signal(asset, candles, point=point)
+                            if ifvg_sig:
+                                signal = ifvg_sig["side"]
+                                sl_pips = ifvg_sig.get("sl_pips", 50)
+                                ai_confidence = ifvg_sig.get("confidence", 0.75)
+                                strategy_name = ifvg_sig.get("strategy", "IFVG_SCALP")
+                                pattern_extra = ifvg_sig.get("reason", "IFVG_M5")
+                                logger.info(f"📐 IFVG {asset}: {signal} | SL {sl_pips} pips | {pattern_extra}")
+                        # 3. Fallback RSI Extreme Reversal (mean reversion)
+                        if not signal and len(candles) >= 19:
+                            rsi_sig = get_rsi_extreme_signal(asset, candles, point=point)
+                            if rsi_sig:
+                                signal = rsi_sig["side"]
+                                sl_pips = rsi_sig.get("sl_pips", 50)
+                                ai_confidence = rsi_sig.get("confidence", 0.72)
+                                strategy_name = rsi_sig.get("strategy", "RSI_EXTREME_REVERSAL")
+                                pattern_extra = rsi_sig.get("reason", "RSI_REV")
+                                logger.info(f"📐 RSI Extreme {asset}: {signal} | SL {sl_pips} pips | {pattern_extra}")
 
                     if not signal:
                         # Fallback: trend-based (ALADDIN), seuil 0.001% ultra-bas pour tester
                         if "Volatility" in asset:
                             if change > 0.001: trend = "WEAK_UP"
                             elif change < -0.001: trend = "WEAK_DOWN"
-                            # Si change=0 (premier cycle ou marché plat): micro-signal depuis dernière bougie M5
-                            elif use_ifvg and abs(change) < 0.001:
+                            # Si change=0 (premier cycle ou marché plat): micro-signal depuis M5
+                            elif use_synthetics and abs(change) < 0.001:
                                 candles = m5_bars.get(asset, [])
                                 if len(candles) >= 2:
-                                    last = candles[0]  # Sentinel: [0]=newest
+                                    last = candles[0]   # [0]=newest
+                                    prev = candles[1]
                                     o, c = float(last.get("o", 0)), float(last.get("c", 0))
-                                    if c > o + 0.01: trend, pattern_extra = "WEAK_UP", "M5_CANDLE_UP"
-                                    elif c < o - 0.01: trend, pattern_extra = "WEAK_DOWN", "M5_CANDLE_DOWN"
+                                    prev_c = float(prev.get("c", 0))
+                                    if c > o + 0.001: trend, pattern_extra = "WEAK_UP", "M5_CANDLE_UP"
+                                    elif c < o - 0.001: trend, pattern_extra = "WEAK_DOWN", "M5_CANDLE_DOWN"
+                                    # Doji ou corps trop petit: sens selon clôture vs clôture précédente
+                                    elif c > prev_c + 0.001: trend, pattern_extra = "WEAK_UP", "M5_CLOSE_UP"
+                                    elif c < prev_c - 0.001: trend, pattern_extra = "WEAK_DOWN", "M5_CLOSE_DOWN"
                         if trend in ["STRONG_UP", "WEAK_UP"]: signal = "BUY"
                         elif trend in ["STRONG_DOWN", "WEAK_DOWN"]: signal = "SELL"
                         if signal:
                             if not pattern_extra: pattern_extra = f"{trend}_{risk_level}"
                             ai_confidence = 0.85 if "STRONG" in trend else 0.65
 
+                    # --- Filtre cohérence IFVG/trend: éviter contre-tendance forte ---
+                    if signal and strategy_name == "IFVG_SCALP":
+                        if signal == "BUY" and trend == "STRONG_DOWN":
+                            logger.info(f"⏭️ {asset}: IFVG BUY rejeté (trend STRONG_DOWN, contre-tendance)")
+                            signal = None
+                        elif signal == "SELL" and trend == "STRONG_UP":
+                            logger.info(f"⏭️ {asset}: IFVG SELL rejeté (trend STRONG_UP, contre-tendance)")
+                            signal = None
+
                     # LOGGING ANALYSIS
                     logger.info(f"🔍 {asset}: {price} | Trend: {trend} ({change:.3f}%)")
                     
                     if signal:
-                        # Position Check (Max 7 par actif = agressif, positions intelligentes)
+                        # Position Check (Max N par actif, configurable via MAX_POSITIONS_PER_ASSET)
                         open_count = sum(1 for p in current_positions.values() if p['symbol'] == asset)
                         if open_count >= MAX_POSITIONS_PER_ASSET:
                             logger.info(f"⏸️ {asset}: Max positions reached ({open_count}/{MAX_POSITIONS_PER_ASSET})")
@@ -310,19 +361,28 @@ async def run_bot():
                         if strategy_name != "IFVG_SCALP":
                             ai_confidence = 0.85
                             if "WEAK" in trend: ai_confidence = 0.70
-                            # Agressif: monter le risque quand conditions OK
                             ai_risk_multiplier = 1.2
                             if risk_level == "LOW": ai_risk_multiplier = 1.5
                             elif risk_level == "ELEVATED": ai_risk_multiplier = 0.9
                         else:
-                            ai_risk_multiplier = 1.15  # IFVG un peu agressif aussi
+                            ai_risk_multiplier = 1.15
 
-                        # SL réfléchi: IFVG = zone-based; sinon Volatility serré (scalping), min 5
-                        if strategy_name != "IFVG_SCALP":
-                            if "Volatility" in asset or "Index" in asset:
-                                sl_pips = DEFAULT_SL_PIPS_VOLATILITY
-                            else:
-                                sl_pips = int(price * 0.00025 * (100 if "JPY" in asset else 10000))
+                        # Vol 100: ATR dynamique (SL + risk multiplier selon régime volatilité)
+                        vol_candles = m5_bars.get(asset, []) if "Volatility" in asset else []
+                        if vol_candles:
+                            atr_risk = get_atr_risk_multiplier(vol_candles)
+                            ai_risk_multiplier *= atr_risk
+                            atr_sl = get_atr_sl_pips(vol_candles, point=point)
+                            if strategy_name == "ALADDIN_SCALP" or sl_pips == DEFAULT_SL_PIPS_VOLATILITY:
+                                sl_pips = atr_sl
+                            elif strategy_name in ("VOLATILITY_RIDER", "RSI_EXTREME_REVERSAL"):
+                                sl_pips = max(sl_pips, atr_sl)  # garder le max (plus sécurisant)
+
+                        # SL réfléchi: IFVG = zone-based; sinon Volatility serré, min 5
+                        if strategy_name == "IFVG_SCALP":
+                            pass  # déjà défini par IFVG
+                        elif "Volatility" not in asset and "Index" not in asset:
+                            sl_pips = int(price * 0.00025 * (100 if "JPY" in asset else 10000))
                         if sl_pips < 5:
                             sl_pips = 5
 
@@ -338,6 +398,12 @@ async def run_bot():
                                 continue
                             # Boost confiance adaptatif
                             ai_confidence *= learning_brain.get_adaptive_confidence_boost(asset, strategy_name)
+
+                        # Cooldown: ne pas envoyer un ordre par actif plus d'une fois toutes les 90 s
+                        if (current_time - last_order_sent_at.get(asset, 0)) < ORDER_COOLDOWN_SEC:
+                            logger.info(f"⏸️ {asset}: Cooldown ({ORDER_COOLDOWN_SEC}s), skip envoi")
+                            continue
+                        last_order_sent_at[asset] = current_time
 
                         # EXECUTE VIA BRIDGE (IFVG or ALADDIN)
                         logger.info(f"⚡ EXEC {strategy_name} {signal} {asset} | Risk: x{ai_risk_multiplier} | Conf: {ai_confidence}")

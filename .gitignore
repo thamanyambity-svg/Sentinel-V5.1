@@ -39,3 +39,5 @@ Command/*.json
 # IDE
 .vscode/
 .idea/
+bot/journal/*.jsonl
+.env_backup

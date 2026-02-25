@@ -16,13 +16,35 @@ import os
 
 STATE_FILE = "bot_state.json"
 
+
 def save_state():
-    """Saves active trades to JSON file."""
+    """Saves active trades to JSON file using atomic writes to prevent corruption."""
+    import json
+    import os
+    from tempfile import NamedTemporaryFile
+    import shutil
+    
     try:
-        with open(STATE_FILE, 'w') as f:
-            json.dump(_ACTIVE_TRADES, f, indent=4)
+        # 1. Create a temporary file
+        # delete=False is required to close and then rename on some systems, 
+        # though strictly on Unix we can rename open files, it's safer to close first.
+        # We use the same directory to ensure atomic move (rename) is possible.
+        dir_name = os.path.dirname(os.path.abspath(STATE_FILE)) or "."
+        with NamedTemporaryFile('w', delete=False, dir=dir_name, suffix='.tmp') as tmp_file:
+            json.dump(_ACTIVE_TRADES, tmp_file, indent=4)
+            tmp_path = tmp_file.name
+        
+        # 2. Rename temporary file to target file (Atomic operation)
+        os.replace(tmp_path, STATE_FILE)
+        
     except Exception as e:
-        print(f"❌ Failed to save state: {e}")
+        print(f"❌ Failed to save state safely: {e}")
+        # Attempt to clean up temp file if it exists and wasn't renamed
+        if 'tmp_path' in locals() and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except:
+                pass
 
 def load_state():
     """Loads active trades from JSON file."""

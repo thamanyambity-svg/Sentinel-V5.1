@@ -1,6 +1,4 @@
 #!/bin/bash
 # Script pour lancer le bot Alpha Sentinel
 cd "$(dirname "$0")"
-source venv/bin/activate
-export PYTHONPATH=$PYTHONPATH:.
-python3 bot/main.py
+/Users/macbookpro/Downloads/bot_project/venv/bin/python3 -m bot.main_v5
