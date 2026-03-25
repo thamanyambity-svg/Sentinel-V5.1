@@ -16,6 +16,22 @@
 CTrade trade;
 
 //==================================================================//
+//                    STRUCTURES DE DONNÉES                          //
+//==================================================================//
+struct TradeIndicators
+{
+    ulong   ticket;
+    string  symbol;
+    string  tech_signal;
+    double  finbert_score;
+    double  imbalance;        // V7.19 -- Wick Rejection imbalance au moment de l'entree
+    double  entry_price;
+    datetime entry_time;
+    double  profit;
+    bool    closed;
+};
+
+//==================================================================//
 //                        CONFIGURATION                              //
 //==================================================================//
 
@@ -50,26 +66,14 @@ input int    SuperTrendPeriod        = 10;    // Periode ATR SuperTrend
 input double SuperTrendMult          = 3.0;   // Multiplicateur ATR SuperTrend
 
 input group "=== TIMEFRAMES ==="
-ENUM_TIMEFRAMES TF_Entry                = PERIOD_M5;   // Timeframe pour signaux d'entree
-ENUM_TIMEFRAMES TF_Imbalance            = PERIOD_M5;   // Timeframe pour ComputeWickImbalance
+input ENUM_TIMEFRAMES TF_Entry                = PERIOD_M5;   // Timeframe pour signaux d'entree
+input ENUM_TIMEFRAMES TF_Imbalance            = PERIOD_M5;   // Timeframe pour ComputeWickImbalance
 input ENUM_TIMEFRAMES TF_SuperTrend     = PERIOD_H1;   // Timeframe SuperTrend (filtre tendance)
 
 input group "=== TESTING & EXPORT ==="
 input bool   TestingMode           = false;
 input string TradeSymbol           = "XAUUSD";
 input string ExportSymbols         = "XAUUSD";
-struct TradeIndicators
-{
-    ulong   ticket;
-    string  symbol;
-    string  tech_signal;
-    double  finbert_score;
-    double  imbalance;        // V7.19 -- Wick Rejection imbalance au moment de l'entree
-    double  entry_price;
-    datetime entry_time;
-    double  profit;
-    bool    closed;
-};
 
 string tickFile         = "ticks_v3.json";
 string tickFileTemp     = "ticks_v3_temp.json";
@@ -510,8 +514,8 @@ void OnTimer()
     if(!CheckDailyLimits()) return;
     ManagePositions(); ExportTickData_V7();
     if(!EnableAIBridge || TimeCurrent()-lastTradeTime<60) return;
-    if(!FileIsExist("action_plan.json", FILE_COMMON)) return;
-    long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE,FILE_COMMON);
+    if(!FileIsExist("action_plan.json", true)) return;
+    long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE,true);
     if(ft<=0 || (int)TimeCurrent()-(int)ft>=120) return;
     string cmd=ReadCommandFile("action_plan.json");
     if(StringLen(cmd)>10) ProcessBridgeCommand(cmd);
