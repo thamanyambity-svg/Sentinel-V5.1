@@ -404,8 +404,8 @@ void ProcessBridgeCommand(string json)
         }
         else
         {
-            if(decision == "BUY"  && stDir != 1)  { PrintFormat("[ST FILTER] %s BUY bloque - SuperTrend baissier",  sym); return; }
-            if(decision == "SELL" && stDir != -1) { PrintFormat("[ST FILTER] %s SELL bloque - SuperTrend haussier", sym); return; }
+            if(decision == "BUY"  && st_direction != 1)  { PrintFormat("[ST FILTER] %s BUY bloque - SuperTrend baissier",  sym); return; }
+            if(decision == "SELL" && st_direction != -1) { PrintFormat("[ST FILTER] %s SELL bloque - SuperTrend haussier", sym); return; }
         }
     }
 
