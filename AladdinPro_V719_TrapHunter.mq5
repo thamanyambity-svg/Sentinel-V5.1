@@ -46,64 +46,40 @@ input bool   EnableAIBridge        = true;
 input double MinAIConfidence       = 0.70;
 
 input group "=== TIMEFRAMES ==="
-ENUM_TIMEFRAMES TF_Entry           = PERIOD_M5;   // Timeframe pour signaux d'entrée
+ENUM_TIMEFRAMES TF_Entry           = PERIOD_M5;   // Timeframe pour signaux d'entree
 ENUM_TIMEFRAMES TF_Imbalance       = PERIOD_M5;   // Timeframe pour ComputeWickImbalance
 
 input group "=== TESTING & EXPORT ==="
 input bool   TestingMode           = false;
 input string TradeSymbol           = "XAUUSD";
 input string ExportSymbols         = "XAUUSD,EURUSD,BTCUSD";
-
-//==================================================================//
-//                         STRUCTURES                                //
-//==================================================================//
-
 struct TradeIndicators
 {
     ulong   ticket;
     string  symbol;
     string  tech_signal;
     double  finbert_score;
-    double  imbalance;        // V7.19 — Wick Rejection imbalance au moment de l'entrée
+    double  imbalance;        // V7.19 -- Wick Rejection imbalance au moment de l'entree
     double  entry_price;
     datetime entry_time;
     double  profit;
     bool    closed;
 };
 
-//==================================================================//
-//                    VARIABLES GLOBALES                             //
-//==================================================================//
-
-string tickFile          = "ticks_v3.json";
-string tickFileTemp      = "ticks_v3_temp.json";
-string tradeHistoryFile  = "trade_history.json";
-string stateFile         = "aladdin_v719_state.dat";
+string tickFile         = "ticks_v3.json";
+string tickFileTemp     = "ticks_v3_temp.json";
+string tradeHistoryFile = "trade_history.json";
+string stateFile        = "aladdin_v719_state.dat";
 
 TradeIndicators trackedTrades[200];
 int             trackedCount = 0;
 
-double  dailyStartBalance  = 0;
-double  dailyHighWaterMark = 0;
-bool    tradingEnabled     = true;
-int     todayTradeCount    = 0;
-datetime todayDate         = 0;
-datetime lastTradeTime     = 0;
+double   dailyStartBalance  = 0;
+double   dailyHighWaterMark = 0;
+bool     tradingEnabled     = true;
+int      todayTradeCount    = 0;
+datetime todayDate=0, lastTradeTime=0;
 
-//==================================================================//
-//          ComputeWickImbalance — V7.19 Trap Hunter                 //
-//  Approxime l'imbalance acheteurs/vendeurs via les mèches de       //
-//  bougie (Wick Rejection). Fonctionne sur tous brokers retail.     //
-//  Résultat : +1.0 (pression acheteuse) à -1.0 (pression vendeuse) //
-//                                                                    //
-//  Interprétation des mèches :                                       //
-//   mèche haute (wick_up)  → pression VENDEUSE (vendeurs ont rejeté //
-//                             la hausse et ramené le prix vers le    //
-//                             corps → dominance vendeur en haut)     //
-//   mèche basse (wick_down) → pression ACHETEUSE (acheteurs ont     //
-//                             rejeté la baisse et remonté le prix    //
-//                             → dominance acheteur en bas)           //
-//==================================================================//
 double ComputeWickImbalance(string sym, ENUM_TIMEFRAMES tf)
 {
     double o[3], h[3], l[3], c[3];
@@ -111,14 +87,13 @@ double ComputeWickImbalance(string sym, ENUM_TIMEFRAMES tf)
     if(CopyHigh (sym, tf, 1, 3, h) < 3) return 0.0;
     if(CopyLow  (sym, tf, 1, 3, l) < 3) return 0.0;
     if(CopyClose(sym, tf, 1, 3, c) < 3) return 0.0;
-
     double buy_pressure = 0.0, sell_pressure = 0.0;
     for(int i = 0; i < 3; i++)
     {
         double body_top    = MathMax(o[i], c[i]);
         double body_bottom = MathMin(o[i], c[i]);
-        double wick_up     = h[i] - body_top;    // mèche haute → pression vendeuse
-        double wick_down   = body_bottom - l[i]; // mèche basse → pression acheteuse
+        double wick_up     = h[i] - body_top;    // meche haute -> pression vendeuse
+        double wick_down   = body_bottom - l[i]; // meche basse -> pression acheteuse
         double range       = h[i] - l[i];
         if(range > 1e-10)
         {
@@ -128,15 +103,9 @@ double ComputeWickImbalance(string sym, ENUM_TIMEFRAMES tf)
     }
     double total = buy_pressure + sell_pressure;
     if(total < 1e-10) return 0.0;
-    // Normalisé entre -1.0 et +1.0
     return (buy_pressure - sell_pressure) / total;
 }
 
-//==================================================================//
-//                    ExportTickData_V7                              //
-//  Exporte les ticks des symboles surveillés dans ticks_v3.json     //
-//  V7.19 : Inclut le champ "imbalance" (Wick Rejection)             //
-//==================================================================//
 void ExportTickData_V7()
 {
     static datetime lastExport = 0;
@@ -159,7 +128,6 @@ void ExportTickData_V7()
         double spread = ask - bid;
         int    digits = (int)SymbolInfoInteger(symbols[i], SYMBOL_DIGITS);
 
-        // Calcul RSI et ADX pour active_strat
         int hRsi = iRSI(symbols[i], TF_Entry, 14, PRICE_CLOSE);
         int hAdx = iADX(symbols[i], TF_Entry, 14);
         double rsi_buf[1], adx_buf[1];
@@ -169,17 +137,17 @@ void ExportTickData_V7()
         string active_strat = (adx_val > 35 && rsi_val > 50) ? "MOM_BUY" :
                               (adx_val > 35 && rsi_val < 50) ? "MOM_SELL" : "WAIT";
 
-        // Calculer l'imbalance via wick rejection (V7.19 Trap Hunter)
+        // V7.19 Trap Hunter : imbalance via wick rejection (sans MarketBookGet)
         double imb = ComputeWickImbalance(symbols[i], TF_Imbalance);
 
         if(!first) json += ",";
         first = false;
         json += "{\"sym\":\"" + symbols[i] + "\""
-              + ",\"bid\":"    + DoubleToString(bid, digits)
-              + ",\"ask\":"    + DoubleToString(ask, digits)
+              + ",\"bid\":" + DoubleToString(bid, digits)
+              + ",\"ask\":" + DoubleToString(ask, digits)
               + ",\"spread\":" + DoubleToString(spread, digits)
-              + ",\"rsi\":"    + DoubleToString(rsi_val, 2)
-              + ",\"adx\":"    + DoubleToString(adx_val, 2)
+              + ",\"rsi\":" + DoubleToString(rsi_val, 2)
+              + ",\"adx\":" + DoubleToString(adx_val, 2)
               + ",\"active_strat\":\"" + active_strat + "\""
               + ",\"imbalance\":" + DoubleToString(imb, 3)
               + ",\"t\":" + IntegerToString((int)TimeCurrent())
@@ -190,23 +158,22 @@ void ExportTickData_V7()
     }
     json += "]";
 
-    int h = FileOpen(tickFileTemp, FILE_WRITE | FILE_ANSI | FILE_TXT);
-    if(h != INVALID_HANDLE)
+    int fh = FileOpen(tickFileTemp, FILE_WRITE | FILE_ANSI | FILE_TXT);
+    if(fh != INVALID_HANDLE)
     {
-        FileWriteString(h, json);
-        FileClose(h);
+        FileWriteString(fh, json);
+        FileClose(fh);
         if(FileIsExist(tickFile)) FileDelete(tickFile);
         FileMove(tickFileTemp, 0, tickFile, 0);
     }
 }
 
 //==================================================================//
-//                     SaveTradeIndicators                           //
-//  Enregistre les indicateurs au moment de l'ouverture du trade     //
-//  V7.19 : Inclut le champ imbalance (Wick Rejection)               //
-//  imbalance passé en paramètre depuis ProcessBridgeCommand pour    //
-//  garantir la cohérence avec la valeur utilisée à la décision.     //
+//                     SaveTradeIndicators (V7.19)                   //
+//  imb_at_entry passe en parametre depuis ProcessBridgeCommand pour //
+//  garantir la coherence avec la valeur utilisee a la decision.     //
 //==================================================================//
+
 void SaveTradeIndicators(ulong ticket, string sym, string tech_signal,
                          double finbert_score, double entry_price,
                          double imb_at_entry)
@@ -230,12 +197,34 @@ void SaveTradeIndicators(ulong ticket, string sym, string tech_signal,
 
 //==================================================================//
 //                     ExportTradeHistory_V7                         //
-//  Exporte l'historique des trades dans trade_history.json          //
-//  V7.19 : Inclut le champ imbalance pour l'apprentissage NEXUS     //
 //==================================================================//
+//  Exporte l'historique des trades fermes dans trade_history.json.  //
+//  V7.19 : Inclut le champ "imbalance" (Wick Rejection au moment    //
+//  de l'entree) pour l'entrainement du LSTM NEXUS sur 3 dimensions. //
+//                                                                    //
+//  Structure JSON exportee par trade :                               //
+//    "ticket"        -> identifiant unique MT5                       //
+//    "sym"           -> symbole (ex: XAUUSD)                         //
+//    "tech_signal"   -> direction : "BUY" | "SELL"                  //
+//    "finbert_score" -> score SPM de Vanguard                        //
+//    "imbalance"     -> float [-1.0 .. +1.0]                         //
+//                       positif = pression acheteuse (Bear Trap ?)  //
+//                       negatif = pression vendeuse  (Bull Trap ?)  //
+//    "entry_price"   -> prix d'ouverture                            //
+//    "entry_time"    -> unix timestamp                               //
+//    "profit"        -> P&L en USD                                   //
+//    "closed"        -> true si deal cloture                         //
+//                                                                    //
+//  Cote Python : sentinel_rl.evolve_memory() diagnostic :           //
+//    [NEXUS] Imbalance reelle dans ce batch: X/Y (Z%)               //
+//    Avertissement si Z% < 20% (3eme dim. LSTM quasi nulle)         //
+//==================================================================//
+//  NOTES D'INTEGRATION V7.19 :                                      //
+//  - appele dans OnDeinit(), ProcessBridgeCommand() et OnTimer()    //
+//  - HistorySelect couvre les 7 derniers jours (86400*7 secondes)   //
+//  - HistoryDealSelect(ticket) marque les deals clotures            //
 void ExportTradeHistory_V7()
 {
-    // Mise à jour des profits sur les trades fermés
     if(HistorySelect(TimeCurrent() - 86400 * 7, TimeCurrent()))
     {
         for(int i = 0; i < trackedCount; i++)
@@ -254,28 +243,27 @@ void ExportTradeHistory_V7()
     bool first = true;
     for(int i = 0; i < trackedCount; i++)
     {
-        double entryImbalance = trackedTrades[i].imbalance;
         if(!first) json += ",";
         first = false;
         json += "{"
-              + "\"ticket\":"        + IntegerToString((long)trackedTrades[i].ticket)
-              + ",\"sym\":\""        + trackedTrades[i].symbol + "\""
+              + "\"ticket\":" + IntegerToString((long)trackedTrades[i].ticket)
+              + ",\"sym\":\"" + trackedTrades[i].symbol + "\""
               + ",\"tech_signal\":\"" + trackedTrades[i].tech_signal + "\""
               + ",\"finbert_score\":" + DoubleToString(trackedTrades[i].finbert_score, 4)
-              + ",\"imbalance\":"    + DoubleToString(entryImbalance, 3)
-              + ",\"entry_price\":"  + DoubleToString(trackedTrades[i].entry_price, 5)
-              + ",\"entry_time\":"   + IntegerToString((int)trackedTrades[i].entry_time)
-              + ",\"profit\":"       + DoubleToString(trackedTrades[i].profit, 2)
-              + ",\"closed\":"       + (trackedTrades[i].closed ? "true" : "false")
+              + ",\"imbalance\":" + DoubleToString(trackedTrades[i].imbalance, 3)
+              + ",\"entry_price\":" + DoubleToString(trackedTrades[i].entry_price, 5)
+              + ",\"entry_time\":" + IntegerToString((int)trackedTrades[i].entry_time)
+              + ",\"profit\":" + DoubleToString(trackedTrades[i].profit, 2)
+              + ",\"closed\":" + (trackedTrades[i].closed ? "true" : "false")
               + "}";
     }
     json += "]";
 
-    int h = FileOpen(tradeHistoryFile, FILE_WRITE | FILE_ANSI | FILE_TXT);
-    if(h != INVALID_HANDLE)
+    int fh = FileOpen(tradeHistoryFile, FILE_WRITE | FILE_ANSI | FILE_TXT);
+    if(fh != INVALID_HANDLE)
     {
-        FileWriteString(h, json);
-        FileClose(h);
+        FileWriteString(fh, json);
+        FileClose(fh);
     }
 }
 
@@ -308,7 +296,7 @@ bool CheckDailyLimits()
         if(tradingEnabled)
         {
             tradingEnabled = false;
-            PrintFormat("🛑 RISK HALT: Drawdown journalier %.2f%% > %.2f%%", dd, MaxDailyDrawdownPercent);
+            PrintFormat("RISK HALT: Drawdown journalier %.2f%% > %.2f%%", dd, MaxDailyDrawdownPercent);
         }
         return false;
     }
@@ -346,11 +334,11 @@ bool CheckSpread(string sym)
 //==================================================================//
 string ReadCommandFile(string path)
 {
-    int h = FileOpen(path, FILE_READ | FILE_ANSI | FILE_TXT);
-    if(h == INVALID_HANDLE) return "";
+    int fh = FileOpen(path, FILE_READ | FILE_ANSI | FILE_TXT);
+    if(fh == INVALID_HANDLE) return "";
     string content = "";
-    while(!FileIsEnding(h)) content += FileReadString(h);
-    FileClose(h);
+    while(!FileIsEnding(fh)) content += FileReadString(fh);
+    FileClose(fh);
     return content;
 }
 
@@ -364,7 +352,6 @@ string ExtractJSONValue(string src, string key)
     if(start == -1)
     {
         start = cp + 1;
-        // Ignorer les espaces
         while(start < StringLen(src) && StringGetCharacter(src, start) == ' ') start++;
         int end_c = StringFind(src, ",", start);
         int end_b = StringFind(src, "}", start);
@@ -391,7 +378,7 @@ void ProcessBridgeCommand(string json)
     if(sym == "") sym = TradeSymbol;
     if(multiplier < 0.1) multiplier = 1.0;
 
-    if(!CheckSpread(sym)) { Print("⛔ Spread trop large sur ", sym); return; }
+    if(!CheckSpread(sym)) { Print("Spread trop large sur ", sym); return; }
 
     int hAtr = iATR(sym, TF_Entry, 14);
     double atr_buf[1];
@@ -403,11 +390,11 @@ void ProcessBridgeCommand(string json)
     double lot    = CalculateLotSize(sym, slDist) * multiplier;
     double price  = (decision == "BUY") ? SymbolInfoDouble(sym, SYMBOL_ASK)
                                         : SymbolInfoDouble(sym, SYMBOL_BID);
-    int digits    = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+    int    digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
     double sl     = NormalizeDouble((decision == "BUY") ? price - slDist : price + slDist, digits);
     double tp     = NormalizeDouble((decision == "BUY") ? price + tpDist : price - tpDist, digits);
 
-    // Calculer l'imbalance une seule fois pour la décision ET le tracking
+    // Calculer l'imbalance une seule fois pour la decision ET le tracking
     double imb_now = ComputeWickImbalance(sym, TF_Imbalance);
 
     bool ok = (decision == "BUY") ? trade.Buy(lot, sym, price, sl, tp, "ALADDIN V7.19")
@@ -415,7 +402,7 @@ void ProcessBridgeCommand(string json)
     if(ok)
     {
         ulong ticket = trade.ResultOrder();
-        PrintFormat("✅ EXEC %s | %s | %.2f lots | SL=%.5f | TP=%.5f | imbalance=%.3f",
+        PrintFormat("EXEC %s | %s | %.2f lots | SL=%.5f | TP=%.5f | imbalance=%.3f",
                     decision, sym, lot, sl, tp, imb_now);
         SaveTradeIndicators(ticket, sym, decision, finbert, price, imb_now);
         todayTradeCount++;
@@ -423,143 +410,86 @@ void ProcessBridgeCommand(string json)
         ExportTradeHistory_V7();
     }
 }
-
 //==================================================================//
 //                        GESTION POSITIONS                          //
-//==================================================================//
 void ManagePositions()
 {
-    for(int i = PositionsTotal() - 1; i >= 0; i--)
+    for(int i = PositionsTotal()-1; i >= 0; i--)
     {
-        ulong ticket = PositionGetTicket(i);
+        ulong  ticket = PositionGetTicket(i);
         if(!PositionSelectByTicket(ticket)) continue;
         if(PositionGetInteger(POSITION_MAGIC) != MAGIC_NUMBER) continue;
-
-        string sym    = PositionGetString(POSITION_SYMBOL);
-        int    ptype  = (int)PositionGetInteger(POSITION_TYPE);
-        double pOpen  = PositionGetDouble(POSITION_PRICE_OPEN);
-        double pCur   = (ptype == POSITION_TYPE_BUY) ? SymbolInfoDouble(sym, SYMBOL_BID)
-                                                     : SymbolInfoDouble(sym, SYMBOL_ASK);
-        double pSL    = PositionGetDouble(POSITION_SL);
-        double pTP    = PositionGetDouble(POSITION_TP);
-        double profit = PositionGetDouble(POSITION_PROFIT);
-        int    digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
-        double point  = SymbolInfoDouble(sym, SYMBOL_POINT);
-
-        // Break-Even automatique
+        string sym   = PositionGetString(POSITION_SYMBOL);
+        int    ptype = (int)PositionGetInteger(POSITION_TYPE);
+        double pOpen = PositionGetDouble(POSITION_PRICE_OPEN);
+        double pCur  = (ptype==POSITION_TYPE_BUY)?SymbolInfoDouble(sym,SYMBOL_BID)
+                                                 :SymbolInfoDouble(sym,SYMBOL_ASK);
+        double pSL   = PositionGetDouble(POSITION_SL);
+        double pTP   = PositionGetDouble(POSITION_TP);
+        double profit= PositionGetDouble(POSITION_PROFIT);
+        int    digits= (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+        double point = SymbolInfoDouble(sym, SYMBOL_POINT);
         if(EnableAutoBreakeven && profit >= BreakevenTriggerProfit)
         {
-            double newSl = NormalizeDouble(pOpen + (ptype == POSITION_TYPE_BUY ? point : -point), digits);
-            if((ptype == POSITION_TYPE_BUY  && newSl > pSL) ||
-               (ptype == POSITION_TYPE_SELL && (pSL == 0 || newSl < pSL)))
+            double newSl = NormalizeDouble(pOpen+(ptype==POSITION_TYPE_BUY?point:-point),digits);
+            if((ptype==POSITION_TYPE_BUY && newSl>pSL)||
+               (ptype==POSITION_TYPE_SELL && (pSL==0||newSl<pSL)))
                 trade.PositionModify(ticket, newSl, pTP);
         }
-
-        // Trailing Stop
         if(EnableTrailingStop)
         {
             double trailDist  = TrailingStepPoints * point;
             double trailStart = TrailingStartPoints * point;
-            if(ptype == POSITION_TYPE_BUY && pCur - pOpen >= trailStart)
+            if(ptype==POSITION_TYPE_BUY && pCur-pOpen >= trailStart)
             {
-                double newSl = NormalizeDouble(pCur - trailDist, digits);
+                double newSl = NormalizeDouble(pCur-trailDist, digits);
                 if(newSl > pSL) trade.PositionModify(ticket, newSl, pTP);
             }
-            else if(ptype == POSITION_TYPE_SELL && pOpen - pCur >= trailStart)
+            else if(ptype==POSITION_TYPE_SELL && pOpen-pCur >= trailStart)
             {
-                double newSl = NormalizeDouble(pCur + trailDist, digits);
-                if(pSL == 0 || newSl < pSL) trade.PositionModify(ticket, newSl, pTP);
+                double newSl = NormalizeDouble(pCur+trailDist, digits);
+                if(pSL==0||newSl<pSL) trade.PositionModify(ticket, newSl, pTP);
             }
         }
     }
 }
 
 //==================================================================//
-//                           HUD                                     //
-//==================================================================//
-void UpdateHUD()
-{
-    if(!EnableHUD) return;
-    double equity  = AccountInfoDouble(ACCOUNT_EQUITY);
-    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-    double dd      = (dailyHighWaterMark > 0) ?
-                     ((dailyHighWaterMark - equity) / dailyHighWaterMark) * 100.0 : 0.0;
-    string hud = "";
-    hud += "══════════════════════════════════════\n";
-    hud += "    ALADDIN PRO V7.19 — TRAP HUNTER  \n";
-    hud += "══════════════════════════════════════\n";
-    hud += " STATUS:  " + (tradingEnabled ? "🟢 HUNTING" : "🔴 HALTED") + "\n";
-    hud += " EQUITY:  " + DoubleToString(equity, 2)  + " $\n";
-    hud += " P&L:     " + DoubleToString(equity - balance, 2) + " $\n";
-    hud += " DD:      " + DoubleToString(dd, 2) + " %\n";
-    hud += " TRADES:  " + IntegerToString(todayTradeCount) + " (aujourd'hui)\n";
-    hud += " TRACKED: " + IntegerToString(trackedCount) + " trades\n";
-    hud += "--------------------------------------\n";
-    hud += " IMBALANCE ENGINE: Wick Rejection V7.19\n";
-    hud += "══════════════════════════════════════\n";
-    Comment(hud);
-}
-
-//==================================================================//
-//                      INITIALISATION / TIMERS                      //
+//                   INITIALISATION / TIMERS / TICKS                 //
 //==================================================================//
 int OnInit()
 {
     trade.SetExpertMagicNumber(MAGIC_NUMBER);
     trade.SetDeviationInPoints(50);
-
-    uint filling = (uint)SymbolInfoInteger(_Symbol, SYMBOL_FILLING_MODE);
-    if((filling & SYMBOL_FILLING_FOK) != 0)      trade.SetTypeFilling(ORDER_FILLING_FOK);
-    else if((filling & SYMBOL_FILLING_IOC) != 0) trade.SetTypeFilling(ORDER_FILLING_IOC);
-    else                                          trade.SetTypeFilling(ORDER_FILLING_RETURN);
-
+    uint filling=(uint)SymbolInfoInteger(_Symbol,SYMBOL_FILLING_MODE);
+    if((filling&SYMBOL_FILLING_FOK)!=0)      trade.SetTypeFilling(ORDER_FILLING_FOK);
+    else if((filling&SYMBOL_FILLING_IOC)!=0) trade.SetTypeFilling(ORDER_FILLING_IOC);
+    else                                     trade.SetTypeFilling(ORDER_FILLING_RETURN);
     dailyStartBalance  = AccountInfoDouble(ACCOUNT_BALANCE);
     dailyHighWaterMark = dailyStartBalance;
     todayDate          = TimeCurrent();
     trackedCount       = 0;
-
     EventSetTimer(TimerSeconds);
-    Print("🎯 ALADDIN PRO V7.19 — TRAP HUNTER ACTIVÉ");
-    Print("📡 ComputeWickImbalance() initialisé — Brokers retail compatibles.");
+    Print("ALADDIN PRO V7.19 -- TRAP HUNTER ACTIVE");
+    Print("ComputeWickImbalance() initialise -- Brokers retail compatibles.");
     return(INIT_SUCCEEDED);
 }
-
 void OnDeinit(const int reason)
 {
     EventKillTimer();
     ExportTradeHistory_V7();
-    Print("🛰️ ALADDIN V7.19 : Systèmes mis en veille.");
+    Print("ALADDIN V7.19 : Systemes mis en veille.");
 }
-
 void OnTimer()
 {
     if(!CheckDailyLimits()) return;
-    ManagePositions();
-    ExportTickData_V7();
-
-    if(!EnableAIBridge) return;
-    if(TimeCurrent() - lastTradeTime < 60) return; // Cooldown 1 minute
-
-    // Lecture de la décision Python depuis action_plan.json
-    // On utilise l'heure de modification du fichier (FileGetInteger) pour éviter
-    // de rejouer une ancienne décision (ISO timestamp non parseable via StringToInteger).
-    if(FileIsExist("action_plan.json"))
-    {
-        long fileTime = (long)FileGetInteger("action_plan.json", FILE_MODIFY_DATE);
-        if(fileTime > 0 && (int)TimeCurrent() - (int)fileTime < 30)
-        {
-            string cmd = ReadCommandFile("action_plan.json");
-            if(StringLen(cmd) > 10)
-                ProcessBridgeCommand(cmd);
-        }
-    }
-
-    UpdateHUD();
+    ManagePositions(); ExportTickData_V7();
+    if(!EnableAIBridge || TimeCurrent()-lastTradeTime<60) return;
+    if(!FileIsExist("action_plan.json")) return;
+    long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE);
+    if(ft<=0 || (int)TimeCurrent()-(int)ft>=30) return;
+    string cmd=ReadCommandFile("action_plan.json");
+    if(StringLen(cmd)>10) ProcessBridgeCommand(cmd);
     ExportTradeHistory_V7();
 }
-
-void OnTick()
-{
-    // Gestion active des positions à chaque tick (trailing, breakeven)
-    ManagePositions();
-}
+void OnTick() { ManagePositions(); }
