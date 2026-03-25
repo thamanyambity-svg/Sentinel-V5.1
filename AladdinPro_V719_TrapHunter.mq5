@@ -163,13 +163,13 @@ void ExportTickData_V7()
     }
     json += "]";
 
-    int fh = FileOpen(tickFileTemp, FILE_WRITE | FILE_ANSI | FILE_TXT);
+    int fh = FileOpen(tickFileTemp, FILE_WRITE | FILE_ANSI | FILE_TXT | FILE_COMMON);
     if(fh != INVALID_HANDLE)
     {
         FileWriteString(fh, json);
         FileClose(fh);
-        if(FileIsExist(tickFile)) FileDelete(tickFile);
-        FileMove(tickFileTemp, 0, tickFile, 0);
+        if(FileIsExist(tickFile, FILE_COMMON)) FileDelete(tickFile, FILE_COMMON);
+        FileMove(tickFileTemp, FILE_COMMON, tickFile, FILE_COMMON);
     }
 }
 
@@ -264,7 +264,7 @@ void ExportTradeHistory_V7()
     }
     json += "]";
 
-    int fh = FileOpen(tradeHistoryFile, FILE_WRITE | FILE_ANSI | FILE_TXT);
+    int fh = FileOpen(tradeHistoryFile, FILE_WRITE | FILE_ANSI | FILE_TXT | FILE_COMMON);
     if(fh != INVALID_HANDLE)
     {
         FileWriteString(fh, json);
@@ -339,7 +339,7 @@ bool CheckSpread(string sym)
 //==================================================================//
 string ReadCommandFile(string path)
 {
-    int fh = FileOpen(path, FILE_READ | FILE_ANSI | FILE_TXT);
+    int fh = FileOpen(path, FILE_READ | FILE_ANSI | FILE_TXT | FILE_COMMON);
     if(fh == INVALID_HANDLE) return "";
     string content = "";
     while(!FileIsEnding(fh)) content += FileReadString(fh);
@@ -505,8 +505,8 @@ void OnTimer()
     if(!CheckDailyLimits()) return;
     ManagePositions(); ExportTickData_V7();
     if(!EnableAIBridge || TimeCurrent()-lastTradeTime<60) return;
-    if(!FileIsExist("action_plan.json")) return;
-    long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE);
+    if(!FileIsExist("action_plan.json", FILE_COMMON)) return;
+    long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE,FILE_COMMON);
     if(ft<=0 || (int)TimeCurrent()-(int)ft>=30) return;
     string cmd=ReadCommandFile("action_plan.json");
     if(StringLen(cmd)>10) ProcessBridgeCommand(cmd);
