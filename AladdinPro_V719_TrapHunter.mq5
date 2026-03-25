@@ -376,7 +376,10 @@ void ProcessBridgeCommand(string json)
 
     string decision   = ExtractJSONValue(json, "decision");
     string sym        = ExtractJSONValue(json, "asset");
-    double multiplier = StringToDouble(ExtractJSONValue(json, "lot_multiplier"));
+    // Compatibilité : l'EA lit "lot_multiplier" ; Python écrit aussi "kelly_risk" (ancienne version)
+    string mult_str   = ExtractJSONValue(json, "lot_multiplier");
+    if(mult_str == "") mult_str = ExtractJSONValue(json, "kelly_risk");
+    double multiplier = StringToDouble(mult_str);
     double finbert    = StringToDouble(ExtractJSONValue(json, "spm_score"));
 
     if(decision == "IGNORE" || decision == "") return;
