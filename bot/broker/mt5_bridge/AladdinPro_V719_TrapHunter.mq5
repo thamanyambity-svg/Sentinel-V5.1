@@ -12,7 +12,7 @@
 #property description "Aladdin Pro V7.19 — Trap Hunter | Wick Rejection Imbalance | Python Sentinel Bridge"
 
 #include <Trade\Trade.mqh>
-#include "SuperTrend_Filter.mqh"
+#include <SuperTrend_Filter.mqh>
 CTrade trade;
 
 //==================================================================//
@@ -397,8 +397,8 @@ void ProcessBridgeCommand(string json)
     // Filtre SuperTrend : confirme que la direction est alignee avec la tendance H1
     if(EnableSuperTrendFilter)
     {
-        int stDir = SuperTrendDir(sym, TF_SuperTrend, SuperTrendPeriod, SuperTrendMult);
-        if(stDir == 0)
+        int st_direction = SuperTrendDir(sym, TF_SuperTrend, SuperTrendPeriod, SuperTrendMult);
+        if(st_direction == 0)
         {
             PrintFormat("[ST FILTER] %s - donnees SuperTrend insuffisantes, filtre ignore", sym);
         }
