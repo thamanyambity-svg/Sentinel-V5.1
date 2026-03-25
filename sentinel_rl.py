@@ -60,12 +60,12 @@ class NexusArchitect:
 
     def solve_kill_switch(self):
         """Protocole Anti-Erreur : Interdiction de trading si l'IA perd sa précision.
-        GRACE PERIOD : On attend 20 trades pour laisser le nouveau modèle 3D s'exprimer.
+        GRACE PERIOD : On attend 50 trades pour laisser le nouveau modèle 3D s'exprimer.
         """
-        if len(self.accuracy_history) > 20: 
+        if len(self.accuracy_history) > 50: 
             recent_acc = np.mean(self.accuracy_history[-10:])
-            if recent_acc < 0.45: # Seuil légèrement baissé pour la phase d'apprentissage
-                print("[NEXUS] 🚨 KILL SWITCH ACTIVÉ : Précision critique (<45%). Mode Observation.")
+            if recent_acc < 0.30: # Seuil abaissé — modèle 3D en phase d'apprentissage
+                print("[NEXUS] KILL SWITCH ACTIVE : Precision critique (<30%). Mode Observation.")
                 return True
         return False
 
@@ -74,6 +74,10 @@ class NexusArchitect:
         self.network.eval()
         t_val = 1.0 if tech_signal == "BUY" else -1.0
         
+        # V7.19 — Avertissement si imbalance toujours à zéro
+        if imbalance == 0.0:
+            print("[NEXUS] ⚠️  imbalance=0.0 — Vérifier que l'EA V7.19 exporte bien le champ imbalance")
+            
         # Format pour LSTM (Batch=1, Seq=1, Features=3)
         input_tensor = torch.FloatTensor([[[t_val, spm_score, imbalance]]])
         with torch.no_grad():
@@ -87,9 +91,14 @@ class NexusArchitect:
         
         inputs = []
         targets = []
+        real_imbalance_count = 0  # V7.19 — compteur pour diagnostic
+        
         for t in trade_history:
             t_input = 1.0 if t['tech_signal'] == 'BUY' else -1.0
-            inputs.append([[t_input, t['finbert_score'], t.get('imbalance', 0.0)]])
+            imbalance_val = t.get('imbalance', 0.0)  # Maintenant alimenté par EA V7.19
+            if imbalance_val != 0.0:
+                real_imbalance_count += 1
+            inputs.append([[t_input, t['finbert_score'], imbalance_val]])
             targets.append([1.0 if t['profit'] > 0 else 0.0])
             self.accuracy_history.append(1.0 if t['profit'] > 0 else 0.0)
 
@@ -105,6 +114,15 @@ class NexusArchitect:
             
         torch.save(self.network.state_dict(), self.model_path)
         print(f"[NEXUS] 📉 Optimisation terminée. Erreur résiduelle : {loss.item():.5f}")
+        
+        # V7.19 — Log de la qualité des données d'imbalance
+        total = len(trade_history)
+        pct = (real_imbalance_count / total * 100) if total > 0 else 0
+        print(f"[NEXUS] 🎯 Imbalance réelle dans ce batch: {real_imbalance_count}/{total} ({pct:.0f}%)")
+        if pct < 20:
+            # Seuil 20% : en-dessous, la 3ème feature reste quasi-nulle et le LSTM
+            # n'a pas assez de signal pour apprendre la dimension Imbalance
+            print("[NEXUS] ⚠️  Moins de 20% de données d'imbalance réelles — Vérifier EA V7.19")
 
 if __name__ == "__main__":
     n = NexusArchitect()

@@ -111,10 +111,15 @@ class SovereignGovernor:
             "z_score": z_div,
             "decision": decision,
             "kelly_risk": risk_lot_multiplier,
+            "lot_multiplier": round(risk_lot_multiplier, 2),  # Field read by MQL5 EA
             "reasoning": reason
         }
 
-        with open('action_plan.json', 'w') as f:
+        # Write to MT5 Common/Files directory so EA can read it
+        mt5_path = os.getenv("MT5_FILES_PATH", ".")
+        action_plan_path = os.path.join(mt5_path, "action_plan.json")
+        
+        with open(action_plan_path, 'w') as f:
             json.dump(action_plan, f, indent=4)
 
         status_icon = "✅ EXÉCUTION" if decision != "IGNORE" else "🛑 VERDICT"
