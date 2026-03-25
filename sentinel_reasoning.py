@@ -39,10 +39,35 @@ class SovereignGovernor:
         divergence = abs(tech_val - (spm_score / 2.0))
         return divergence # Si > 1.5, on considère une déviation significative
 
+    def _read_live_imbalance(self, asset: str) -> float:
+        """
+        Lit l'imbalance calculée par l'EA (Wick Rejection) depuis ticks_v3.json.
+        Remplace l'ancien paramètre statique imbalance=0.0 par une valeur live.
+        V7.19 Trap Hunter — branché sur ComputeWickImbalance() de l'EA.
+        """
+        try:
+            ticks_path = 'ticks_v3.json'
+            if not os.path.exists(ticks_path):
+                return 0.0
+            with open(ticks_path, 'r') as f:
+                ticks = json.load(f)
+            for tick in ticks:
+                if tick.get('sym') == asset:
+                    return float(tick.get('imbalance', 0.0))
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            pass
+        return 0.0
+
     def evaluate_bayesian_arbitrage(self, asset, tech_signal, imbalance=0.0):
         """Fusion Bayésienne : P(Win | Tech, Fund, OrderFlow)"""
         print(f"\n[SOVEREIGN] 🏛️ Inférence Bayésienne (+Liquidité) sur {asset}...")
-        
+
+        # V7.19 Trap Hunter : Lecture automatique depuis ticks_v3.json si non fourni
+        if imbalance == 0.0:
+            imbalance = self._read_live_imbalance(asset)
+            if imbalance != 0.0:
+                print(f"[SOVEREIGN] 🎯 Imbalance live chargée: {imbalance:.3f} (Wick Rejection EA)")
+
         vanguard = self.load_vanguard_spm()
         spm = vanguard.get('spm_score', 0)
         mood = vanguard.get('market_mood', 'NEUTRAL')
@@ -69,11 +94,38 @@ class SovereignGovernor:
         # ============================================================
         contra_signal = "SELL" if tech_signal == "BUY" else "BUY"
         tech_val = 1.0 if tech_signal == "BUY" else -1.0
-        
+
+        # ============================================================
+        # CAS 0 : TRAP HUNTER — Détection de Fakeout Institutionnel
+        # (V7.19) — S'active avant le Cas 1 si signature de piège détectée
+        # ============================================================
+        # Signature d'un Bull/Bear Trap :
+        #   - imbalance faible (pas de vraie liquidité derrière la cassure)
+        #   - Signal technique en direction contraire à l'imbalance
+        fakeout_detected = False
+        fakeout_reason = ""
+
+        if tech_signal == "BUY" and imbalance < -0.35:
+            # Signal BUY mais pression vendeuse dominante dans les mèches → Bull Trap probable
+            # Seuil -0.35 : imbalance < -0.35 indique >67% de pression vendeuse nette
+            fakeout_detected = True
+            fakeout_reason = f"🎯 TRAP HUNTER : Wick Rejet vendeur ({imbalance:.2f}) contre signal BUY — Bull Trap probable"
+        elif tech_signal == "SELL" and imbalance > 0.35:
+            # Signal SELL mais pression acheteuse dominante → Bear Trap probable
+            # Seuil +0.35 : imbalance > 0.35 indique >67% de pression acheteuse nette
+            fakeout_detected = True
+            fakeout_reason = f"🎯 TRAP HUNTER : Wick Rejet acheteur ({imbalance:.2f}) contre signal SELL — Bear Trap probable"
+
+        if fakeout_detected:
+            decision = contra_signal
+            risk_lot_multiplier = 0.50  # Taille réduite — mode expérimental
+            reason = fakeout_reason
+            print(f"[SOVEREIGN] ⚡ {reason}")
+
         # Cas 1 : ALIGNEMENT PRO-TREND (Technique et Sentiment sont d'accord)
         # Si Tech=BUY et SPM > 0.1, et pas de mur de vente massif (imbalance < -0.7)
-        if (tech_signal == "BUY" and spm > 0.1 and imbalance > -0.7) or \
-           (tech_signal == "SELL" and spm < -0.1 and imbalance < 0.7):
+        elif (tech_signal == "BUY" and spm > 0.1 and imbalance > -0.7) or \
+             (tech_signal == "SELL" and spm < -0.1 and imbalance < 0.7):
             decision = tech_signal
             risk_lot_multiplier = 0.75
             reason = f"🚀 CONFLUENCE PRO : Technique et Sentiment ({mood}) alignés. Trade de tendance validé."
@@ -84,11 +136,11 @@ class SovereignGovernor:
             (contra_signal == "BUY" and spm > 0.05) or (contra_signal == "SELL" and spm < -0.05)
         ):
             decision = contra_signal
-            risk_lot_multiplier = 0.85 
+            risk_lot_multiplier = 0.85
             reason = f"💎 VISION QUANTUM : Inversion {tech_signal}->{contra_signal} CONFIRMÉE par Order Flow ({imbalance:.2f}) et Sentiment."
 
         # Cas 3 : Mode Bootstrap Nexus (Capture d'opportunité divergente sans Bookmap)
-        elif len(self.nexus.accuracy_history) < 20: 
+        elif len(self.nexus.accuracy_history) < 20:
             # On tente l'inversion si le sentiment est très fort contre le signal technique
             if (contra_signal == "BUY" and spm > 0.3) or (contra_signal == "SELL" and spm < -0.3):
                 decision = contra_signal
@@ -118,10 +170,16 @@ class SovereignGovernor:
             "z_score": z_div,
             "decision": decision,
             "kelly_risk": risk_lot_multiplier,
-            "reasoning": reason
+            "lot_multiplier": round(risk_lot_multiplier, 2),  # champ lu par l'EA MQL5
+            "reasoning": reason,
+            "fakeout_detected": fakeout_detected,
+            "imbalance": imbalance,
         }
 
-        with open('action_plan.json', 'w') as f:
+        # Écrire dans le dossier MT5 Common/Files pour que l'EA puisse lire le fichier
+        mt5_path = os.getenv("MT5_FILES_PATH", ".")
+        action_plan_path = os.path.join(mt5_path, "action_plan.json")
+        with open(action_plan_path, 'w') as f:
             json.dump(action_plan, f, indent=4)
 
         status_icon = "✅ EXÉCUTION" if decision != "IGNORE" else "🛑 VERDICT"
