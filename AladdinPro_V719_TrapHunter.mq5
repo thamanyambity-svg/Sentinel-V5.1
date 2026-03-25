@@ -12,6 +12,7 @@
 #property description "Aladdin Pro V7.19 — Trap Hunter | Wick Rejection Imbalance | Python Sentinel Bridge"
 
 #include <Trade\Trade.mqh>
+#include "SuperTrend_Filter.mqh"
 CTrade trade;
 
 //==================================================================//
@@ -44,10 +45,14 @@ input double TrailingStepPoints    = 250;
 input group "=== STRATEGY ==="
 input bool   EnableAIBridge        = true;
 input double MinAIConfidence       = 0.70;
+input bool   EnableSuperTrendFilter = true;  // Filtre SuperTrend — confirme direction
+input int    SuperTrendPeriod       = 10;    // Période ATR SuperTrend
+input double SuperTrendMult         = 3.0;   // Multiplicateur ATR SuperTrend
 
 input group "=== TIMEFRAMES ==="
 ENUM_TIMEFRAMES TF_Entry           = PERIOD_M5;   // Timeframe pour signaux d'entree
 ENUM_TIMEFRAMES TF_Imbalance       = PERIOD_M5;   // Timeframe pour ComputeWickImbalance
+input ENUM_TIMEFRAMES TF_SuperTrend      = PERIOD_H1;   // Timeframe SuperTrend (filtre tendance)
 
 input group "=== TESTING & EXPORT ==="
 input bool   TestingMode           = false;
@@ -379,6 +384,21 @@ void ProcessBridgeCommand(string json)
     if(multiplier < 0.1) multiplier = 1.0;
 
     if(!CheckSpread(sym)) { Print("Spread trop large sur ", sym); return; }
+
+    // Filtre SuperTrend : confirme que la direction est alignée avec la tendance H1
+    if(EnableSuperTrendFilter)
+    {
+        int stDir = SuperTrendDir(sym, TF_SuperTrend, SuperTrendPeriod, SuperTrendMult);
+        if(stDir == 0)
+        {
+            PrintFormat("[ST FILTER] %s — données SuperTrend insuffisantes, filtre ignoré", sym);
+        }
+        else
+        {
+            if(decision == "BUY"  && stDir != 1)  { PrintFormat("[ST FILTER] %s BUY bloqué — SuperTrend baissier", sym);  return; }
+            if(decision == "SELL" && stDir != -1) { PrintFormat("[ST FILTER] %s SELL bloqué — SuperTrend haussier", sym); return; }
+        }
+    }
 
     int hAtr = iATR(sym, TF_Entry, 14);
     double atr_buf[1];
