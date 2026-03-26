@@ -552,8 +552,9 @@ void OnDeinit(const int reason)
 }
 void OnTimer()
 {
+    ExportStatus_V7(); // Heartbeat toujours envoyé, même en Risk Halt
     if(!CheckDailyLimits()) return;
-    ManagePositions(); ExportTickData_V7(); ExportStatus_V7();
+    ManagePositions(); ExportTickData_V7();
     if(!EnableAIBridge || TimeCurrent()-lastTradeTime<60) return;
     if(!FileIsExist("action_plan.json", FILE_COMMON)) return;
     long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE,true);
