@@ -438,6 +438,48 @@ void ProcessBridgeCommand(string json)
     }
 }
 //==================================================================//
+//          PYTHON BRIDGE — HEARTBEAT (status.json)                  //
+//  Manquant dans V7.19 — Ajouté pour rétablir le lien avec Python   //
+//==================================================================//
+void ExportStatus_V7()
+{
+    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+    double equity  = AccountInfoDouble(ACCOUNT_EQUITY);
+
+    string json = "{"
+        + "\"updated\":"       + IntegerToString(TimeCurrent())
+        + ",\"balance\":"      + DoubleToString(balance, 2)
+        + ",\"equity\":"       + DoubleToString(equity,  2)
+        + ",\"trading_enabled\":" + (tradingEnabled ? "true" : "false")
+        + ",\"positions\":[";
+
+    int total = PositionsTotal();
+    int count = 0;
+    for(int i = 0; i < total; i++)
+    {
+        ulong ticket = PositionGetTicket(i);
+        if(!PositionSelectByTicket(ticket)) continue;
+        if(PositionGetInteger(POSITION_MAGIC) != MAGIC_NUMBER) continue;
+        if(count > 0) json += ",";
+        json += StringFormat(
+            "{\"ticket\":%d,\"symbol\":\"%s\",\"type\":\"%s\","
+            "\"volume\":%.2f,\"profit\":%.2f,\"price\":%.5f}",
+            (int)ticket,
+            PositionGetString(POSITION_SYMBOL),
+            (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? "BUY" : "SELL"),
+            PositionGetDouble(POSITION_VOLUME),
+            PositionGetDouble(POSITION_PROFIT),
+            PositionGetDouble(POSITION_PRICE_OPEN)
+        );
+        count++;
+    }
+    json += "]}";
+
+    int fh = FileOpen("status.json", FILE_WRITE | FILE_ANSI | FILE_TXT | FILE_COMMON);
+    if(fh != INVALID_HANDLE) { FileWriteString(fh, json); FileClose(fh); }
+}
+
+//==================================================================//
 //                        GESTION POSITIONS                          //
 void ManagePositions()
 {
@@ -497,6 +539,7 @@ int OnInit()
     todayDate          = TimeCurrent();
     trackedCount       = 0;
     EventSetTimer(TimerSeconds);
+    ExportStatus_V7(); // Heartbeat initial — status.json créé dès le démarrage
     Print("ALADDIN PRO V7.19 -- TRAP HUNTER ACTIVE");
     Print("ComputeWickImbalance() initialise -- Brokers retail compatibles.");
     return(INIT_SUCCEEDED);
@@ -510,7 +553,7 @@ void OnDeinit(const int reason)
 void OnTimer()
 {
     if(!CheckDailyLimits()) return;
-    ManagePositions(); ExportTickData_V7();
+    ManagePositions(); ExportTickData_V7(); ExportStatus_V7();
     if(!EnableAIBridge || TimeCurrent()-lastTradeTime<60) return;
     if(!FileIsExist("action_plan.json", FILE_COMMON)) return;
     long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE,true);
