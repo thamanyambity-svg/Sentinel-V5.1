@@ -560,6 +560,7 @@ void OnTimer()
     long ft=(long)FileGetInteger("action_plan.json",FILE_MODIFY_DATE,true);
     if(ft<=0 || (int)TimeCurrent()-(int)ft>=30) return;
     string cmd=ReadCommandFile("action_plan.json");
+    FileDelete("action_plan.json", FILE_COMMON); // Supprime après lecture — évite ré-exécution en boucle
     if(StringLen(cmd)>10) ProcessBridgeCommand(cmd);
     ExportTradeHistory_V7();
 }

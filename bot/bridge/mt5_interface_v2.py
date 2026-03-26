@@ -211,6 +211,14 @@ class MT5Bridge:
                 except Exception as e2:
                     logger.debug("Write to %s: %s", cmd_dir, e2)
             logger.info(f"🧞‍♂️ Aladdin AI Command Sent: {type} {final_symbol} | Risk: x{ai_risk_multiplier} | Conf: {ai_confidence_score}")
+            # Write action_plan.json at Files root so Aladdin V7.19 EA picks it up
+            self.write_action_plan(
+                decision=type,
+                asset=symbol,
+                lot_multiplier=float(ai_risk_multiplier),
+                spm_score=float(ai_confidence_score),
+                reasoning=f"{strategy} | {pattern}",
+            )
             return True
         except Exception as e:
             logger.error(f"❌ Tudor Order Error: {e}")
@@ -254,6 +262,48 @@ class MT5Bridge:
             return True
         except Exception as e:
             logger.error(f"❌ Reset Risk Error: {e}")
+            return False
+
+    def write_action_plan(self, decision: str, asset: str,
+                          lot_multiplier: float = 1.0, spm_score: float = 0.0,
+                          reasoning: str = "") -> bool:
+        """
+        Write action_plan.json at the MT5 Files root so that Aladdin V7.19
+        (AladdinPro_V719_TrapHunter.mq5) can pick it up via its OnTimer() bridge.
+
+        Field names match what the EA's ProcessBridgeCommand() expects:
+          "decision"      → "BUY" | "SELL" | "IGNORE"
+          "asset"         → mapped symbol name (e.g. "XAUUSD")
+          "lot_multiplier"→ risk multiplier
+          "kelly_risk"    → alias kept for backward-compat with older EA versions
+          "spm_score"     → FinBERT / AI confidence score
+
+        Returns:
+            True on success, False if the file could not be written.
+        """
+        final_asset = self.SYMBOL_MAP.get(asset, asset)
+        plan = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "asset": final_asset,
+            "decision": decision.upper(),
+            "lot_multiplier": lot_multiplier,
+            "kelly_risk": lot_multiplier,
+            "spm_score": spm_score,
+            "reasoning": reasoning,
+        }
+        target = os.path.join(self.root_path, "action_plan.json")
+        try:
+            tmp = target + ".tmp"
+            with open(tmp, 'w') as f:
+                json.dump(plan, f)
+            os.replace(tmp, target)
+            logger.info("📋 action_plan.json → %s %s x%.2f", decision.upper(), final_asset, lot_multiplier)
+            return True
+        except OSError as e:
+            logger.error("❌ write_action_plan: cannot write to %s — check permissions/disk space (%s)", target, e)
+            return False
+        except Exception as e:
+            logger.error("❌ write_action_plan error: %s", e)
             return False
 
     def write_ai_bias(self, signal: str, trend: str, reason: str):
