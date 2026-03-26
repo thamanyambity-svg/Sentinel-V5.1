@@ -160,34 +160,56 @@ class MT5DataClient:
             
             if not ticks:
                 return None
-            
-            # ticks_v3.json: {"t":..., "ticks": {"Volatility 100 Index": 1122.02, "R_100": ..., ...}}
-            tick_values = ticks.get("ticks", {})
+
+            # Support two formats:
+            # Old Sentinel format:  {"t":..., "ticks": {"Volatility 100 Index": 1122.02, ...}}
+            # New AladdinPro V7.19: [{"sym":"XAUUSD","bid":...,"ask":...,"spread":...,"imbalance":...,"t":...}, ...]
             price = None
+            bid = None
+            ask = None
+            spread_val = 0
             resolved_symbol = symbol
-            if symbol in tick_values:
-                price = tick_values[symbol]
-            elif symbol in self.SYMBOL_ALIASES:
-                for alias in self.SYMBOL_ALIASES[symbol]:
-                    if alias in tick_values:
-                        price = tick_values[alias]
-                        resolved_symbol = alias
+
+            if isinstance(ticks, list):
+                # AladdinPro V7.19 array format
+                aliases = [symbol] + list(self.SYMBOL_ALIASES.get(symbol, []))
+                for entry in ticks:
+                    if entry.get("sym") in aliases:
+                        bid = float(entry.get("bid", 0) or 0)
+                        ask = float(entry.get("ask", bid) or bid)
+                        spread_val = float(entry.get("spread", 0) or 0)
+                        price = bid if bid else ask
+                        resolved_symbol = entry.get("sym", symbol)
                         break
+            else:
+                # Old Sentinel dict format
+                tick_values = ticks.get("ticks", {})
+                if symbol in tick_values:
+                    price = tick_values[symbol]
+                elif symbol in self.SYMBOL_ALIASES:
+                    for alias in self.SYMBOL_ALIASES[symbol]:
+                        if alias in tick_values:
+                            price = tick_values[alias]
+                            resolved_symbol = alias
+                            break
+                bid = price
+                ask = price
+
             if price is None:
-                logger.debug(f"Symbol {symbol} not in ticks (available: {list(tick_values.keys())[:5]}...)")
+                logger.debug(f"Symbol {symbol} not found in ticks_v3.json")
                 return None
-            
+
             # VELOCITY CALCULATION (Since Sentinel doesn't give previous close)
             # We use the LAST SEEN price in memory as the "previous" reference
             # If not in memory, we use current price (0% change initially)
             prev_price = self.price_memory.get(symbol, price)
             self.price_memory[symbol] = price
-            
+
             return {
-                "bid": price,
-                "ask": price,  # Synthetics typically have minimal spread
-                "spread": 0,   # Sentinel doesn't export spread for synthetics
-                "previous_close": prev_price # Now we have REAL previous price!
+                "bid": bid if bid else price,
+                "ask": ask if ask else price,
+                "spread": spread_val,
+                "previous_close": prev_price  # Now we have REAL previous price!
             }
             
         except Exception as e:
