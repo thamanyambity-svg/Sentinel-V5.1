@@ -12,8 +12,84 @@
 #property description "Aladdin Pro V7.19 — Trap Hunter | Wick Rejection Imbalance | Python Sentinel Bridge"
 
 #include <Trade\Trade.mqh>
-#include "SuperTrend_Filter.mqh"
 CTrade trade;
+
+//==================================================================//
+//          SUPERTREND FILTER (inline — no external .mqh needed)     //
+//  SuperTrendDir() — direction haussière (+1) / baissière (-1)      //
+//  Algorithme : ATR Wilder + bandes SuperTrend lissées              //
+//  Copier SuperTrend_Filter.mqh dans MQL5\Include\ est facultatif.  //
+//==================================================================//
+int SuperTrendDir(string sym, ENUM_TIMEFRAMES tf,
+                  int period   = 10,
+                  double mult  = 3.0,
+                  int lookback = 50)
+{
+    if(lookback < period + 2) lookback = period + 2;
+    int total = lookback + 1;
+
+    double highs[], lows[], closes[];
+    if(CopyHigh (sym, tf, 1, total, highs)  < total) { PrintFormat("[ST] %s — données insuffisantes (CopyHigh)", sym);  return 0; }
+    if(CopyLow  (sym, tf, 1, total, lows)   < total) { PrintFormat("[ST] %s — données insuffisantes (CopyLow)",  sym);  return 0; }
+    if(CopyClose(sym, tf, 1, total, closes) < total) { PrintFormat("[ST] %s — données insuffisantes (CopyClose)",sym);  return 0; }
+
+    double atr[];
+    ArrayResize(atr, total);
+    ArrayInitialize(atr, 0.0);
+
+    double sum = 0.0;
+    for(int i = 1; i <= period; i++)
+    {
+        double tr = MathMax(highs[i] - lows[i],
+                   MathMax(MathAbs(highs[i] - closes[i - 1]),
+                           MathAbs(lows[i]  - closes[i - 1])));
+        sum += tr;
+    }
+    atr[period] = sum / period;
+
+    for(int i = period + 1; i < total; i++)
+    {
+        double tr = MathMax(highs[i] - lows[i],
+                   MathMax(MathAbs(highs[i] - closes[i - 1]),
+                           MathAbs(lows[i]  - closes[i - 1])));
+        atr[i] = (atr[i - 1] * (period - 1) + tr) / period;
+    }
+
+    double upperBand = 0.0, lowerBand = 0.0;
+    int    trend     = 1;
+
+    for(int i = period; i < total; i++)
+    {
+        double mid      = (highs[i] + lows[i]) * 0.5;
+        double rawUpper = mid + mult * atr[i];
+        double rawLower = mid - mult * atr[i];
+
+        if(i == period)
+        {
+            upperBand = rawUpper;
+            lowerBand = rawLower;
+        }
+        else
+        {
+            upperBand = (rawUpper < upperBand || closes[i - 1] > upperBand)
+                        ? rawUpper : upperBand;
+            lowerBand = (rawLower > lowerBand || closes[i - 1] < lowerBand)
+                        ? rawLower : lowerBand;
+        }
+
+        if(trend == 1)  { if(closes[i] < lowerBand) trend = -1; }
+        else            { if(closes[i] > upperBand) trend =  1; }
+    }
+    return trend;
+}
+
+bool SuperTrendBullish(string sym, ENUM_TIMEFRAMES tf,
+                       int period = 10, double mult = 3.0)
+{ return SuperTrendDir(sym, tf, period, mult) == 1; }
+
+bool SuperTrendBearish(string sym, ENUM_TIMEFRAMES tf,
+                       int period = 10, double mult = 3.0)
+{ return SuperTrendDir(sym, tf, period, mult) == -1; }
 
 //==================================================================//
 //                    STRUCTURES DE DONNÉES                          //
