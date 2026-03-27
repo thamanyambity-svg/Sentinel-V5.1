@@ -36,6 +36,10 @@ bot/data/*.db
 bot/data/*.json
 Command/*.json
 
+# ML Model Artifacts
+*.joblib
+sentinel_xgb_model.*
+
 # IDE
 .vscode/
 .idea/

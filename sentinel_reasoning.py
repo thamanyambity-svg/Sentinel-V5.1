@@ -4,16 +4,36 @@ import math
 from datetime import datetime
 from sentinel_rl import NexusArchitect
 
+# V9 — ML Pipeline integration (XGBoost + Confluence)
+try:
+    from sentinel_pipeline import SentinelPipeline, compute_confluence, CONFLUENCE_THRESHOLD
+    from sentinel_pipeline import normalize_imbalance_signal, normalize_trend_signal
+    from sentinel_pipeline import normalize_volatility_signal, detect_market_regime, REGIME_PARAMS
+    from sentinel_ml import build_features
+    _V9_AVAILABLE = True
+except ImportError:
+    _V9_AVAILABLE = False
+
 class SovereignGovernor:
     """
     SOVEREIGN (Module d'Arbitrage Bayésien & Exécution)
     Fusion de données par Inférence Bayésienne et Position Sizing (Kelly Criterion).
+    V9: Integrated XGBoost ML + Weighted Confluence + Market Regime Detection.
     """
     def __init__(self):
         self.fundamental_file = 'fundamental_state.json'
         self.nexus = NexusArchitect()
         # Rolling history for real Z-score computation (max 100 observations)
         self._divergence_history = []
+        # V9 — ML Pipeline (lazy init, graceful fallback)
+        self._pipeline = None
+        if _V9_AVAILABLE:
+            try:
+                self._pipeline = SentinelPipeline()
+                print("[SOVEREIGN] 🧠 V9 ML Pipeline loaded (XGBoost + Confluence)")
+            except Exception as e:
+                print(f"[SOVEREIGN] ⚠️ V9 ML Pipeline unavailable: {e}")
+                self._pipeline = None
 
     def load_vanguard_spm(self):
         """Récupération du Score de Polarité du Marché (SPM) de Vanguard."""
@@ -128,6 +148,58 @@ class SovereignGovernor:
             except (json.JSONDecodeError, KeyError, TypeError, ValueError):
                 pass
         return 0.0
+
+    def _build_v9_tick_data(self, asset: str, imbalance: float) -> dict:
+        """
+        Build V9-compatible tick_data dict from ticks_v3.json for ML feature engine.
+        Returns a dict with keys expected by sentinel_ml.build_features().
+        Falls back to reasonable defaults if data unavailable.
+        """
+        tick_data = {
+            "closes": [], "atr": 0.0, "atr_hist": [],
+            "high": 0.0, "low": 0.0,
+            "imbalance": imbalance, "rsi": 50.0, "spread": 0.0,
+        }
+
+        candidates = []
+        mt5_path = os.getenv("MT5_FILES_PATH", "")
+        if mt5_path:
+            candidates.append(os.path.join(mt5_path, "ticks_v3.json"))
+        candidates.append("ticks_v3.json")
+
+        for ticks_path in candidates:
+            try:
+                if not os.path.exists(ticks_path):
+                    continue
+                with open(ticks_path, 'r') as f:
+                    ticks = json.load(f)
+                if isinstance(ticks, list):
+                    for tick in ticks:
+                        if tick.get('sym') == asset:
+                            bid = float(tick.get('bid', 0.0))
+                            ask = float(tick.get('ask', 0.0))
+                            spread = float(tick.get('spread', ask - bid if ask and bid else 0.0))
+                            atr = float(tick.get('atr', 0.0))
+                            rsi = float(tick.get('rsi', 50.0))
+
+                            tick_data["spread"] = spread
+                            tick_data["atr"] = atr
+                            tick_data["rsi"] = rsi
+                            tick_data["high"] = float(tick.get('high', bid))
+                            tick_data["low"] = float(tick.get('low', bid))
+
+                            # Synthesize closes/atr_hist if not available
+                            if not tick_data["closes"]:
+                                price = bid if bid > 0 else ask
+                                tick_data["closes"] = [price] * 20
+                            if not tick_data["atr_hist"]:
+                                tick_data["atr_hist"] = [atr] * 20
+                            break
+                break
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                pass
+
+        return tick_data
 
     def evaluate_bayesian_arbitrage(self, asset, tech_signal, imbalance=0.0):
         """Fusion Bayésienne : P(Win | Tech, Fund, OrderFlow)"""
@@ -251,6 +323,46 @@ class SovereignGovernor:
         else:
             print(f"[SOVEREIGN] 📊 Kelly fallback (données insuffisantes: {stats['n']} trades fermés)")
 
+        # ============================================================
+        # V9 — ML CONFLUENCE ENGINE (XGBoost + Weighted Scoring + Regime)
+        # Runs in parallel with the existing Bayesian logic.
+        # If the V9 pipeline is available AND confident, it overrides the
+        # base decision. Otherwise the original Bayesian decision stands.
+        # ============================================================
+        v9_data = {}
+        if self._pipeline is not None and _V9_AVAILABLE:
+            try:
+                tick_data = self._build_v9_tick_data(asset, imbalance)
+                v9_result = self._pipeline.evaluate_signal(tick_data, tech_signal)
+                v9_data = v9_result
+
+                # V9 confluence can override IGNORE → EXECUTE or vice-versa
+                v9_confluence = v9_result.get("confluence", 0.0)
+                v9_decision = v9_result.get("decision", "IGNORE")
+                v9_regime = v9_result.get("regime", "RANGE")
+                v9_params = v9_result.get("params", {})
+
+                print(f"[SOVEREIGN] 🧠 V9 Confluence={v9_confluence:.3f} "
+                      f"(threshold={CONFLUENCE_THRESHOLD}) | Regime={v9_regime}")
+
+                # Override logic: V9 confluence > threshold → upgrade to EXECUTE
+                if v9_decision == "EXECUTE" and decision == "IGNORE":
+                    decision = tech_signal
+                    risk_lot_multiplier = 0.5
+                    reason = (f"🧠 V9 ML OVERRIDE: Confluence={v9_confluence:.3f} "
+                              f"(ML={v9_result.get('ml_prob', 0):.2f}) — "
+                              f"Regime={v9_regime}")
+
+                # V9 says IGNORE but base says EXECUTE → downgrade
+                elif v9_decision == "IGNORE" and decision != "IGNORE" and v9_confluence < 0.35:
+                    decision = "IGNORE"
+                    risk_lot_multiplier = 0.0
+                    reason = (f"🧠 V9 ML VETO: Confluence={v9_confluence:.3f} too low — "
+                              f"trade filtered by ML")
+
+            except Exception as e:
+                print(f"[SOVEREIGN] ⚠️ V9 evaluation error (fallback to base): {e}")
+
         action_plan = {
             "timestamp": datetime.now().isoformat(),
             "asset": asset,
@@ -263,6 +375,10 @@ class SovereignGovernor:
             "reasoning": reason,
             "fakeout_detected": fakeout_detected,
             "imbalance": imbalance,
+            # V9 ML data (empty dict if pipeline not available)
+            "v9_confluence": v9_data.get("confluence", None),
+            "v9_ml_prob": v9_data.get("ml_prob", None),
+            "v9_regime": v9_data.get("regime", None),
         }
 
         # Écrire dans le dossier MT5 Common/Files pour que l'EA puisse lire le fichier
