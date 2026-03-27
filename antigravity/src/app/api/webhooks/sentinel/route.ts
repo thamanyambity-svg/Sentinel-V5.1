@@ -20,7 +20,11 @@ export async function POST(req: Request) {
                 openPrice: body.open_price,
                 closePrice: body.close_price,
                 profit: body.profit,
-                duration: body.duration
+                duration: body.duration,
+                // V9 Analytics
+                v9Confluence: body.v9_confluence ?? null,
+                v9MlProb: body.v9_ml_prob ?? null,
+                v9Regime: body.v9_regime ?? null,
             }
         });
 

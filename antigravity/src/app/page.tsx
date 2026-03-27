@@ -11,7 +11,7 @@ export default function HomePage() {
                     Antigravity <span className="text-blue-600">SaaS</span>
                 </h1>
                 <p className="text-xl text-gray-600 mb-10">
-                    L'interface professionnelle pour surveiller vos performances de trading Sentinel V5.2 en temps réel.
+                    L'interface professionnelle pour surveiller vos performances de trading Sentinel <strong>V9</strong> — ML XGBoost, Confluence pondérée &amp; Backtest validé.
                 </p>
 
                 <div className="flex gap-4 justify-center">

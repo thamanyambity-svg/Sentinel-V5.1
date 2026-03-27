@@ -7,17 +7,22 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-// Historique des trades reçus de Sentinel V5.2
+// Historique des trades reçus de Sentinel V9
 model TradeSignal {
-  id        String   @id @default(cuid())
-  ticket    Int      @unique // ID unique du trade MT5
-  symbol    String   // ex: EURUSD
-  type      String   // ex: BUY ou SELL
-  openPrice Float
-  closePrice Float
-  profit    Float    // Profit net en USD
-  duration  Int      // Durée en secondes
-  closedAt  DateTime @default(now())
+  id           String   @id @default(cuid())
+  ticket       Int      @unique // ID unique du trade MT5
+  symbol       String   // ex: EURUSD
+  type         String   // ex: BUY ou SELL
+  openPrice    Float
+  closePrice   Float
+  profit       Float    // Profit net en USD
+  duration     Int      // Durée en secondes
+  closedAt     DateTime @default(now())
+
+  // V9 Analytics
+  v9Confluence Float?   // Score confluence pondéré (0.0 à 1.0)
+  v9MlProb     Float?   // Probabilité ML XGBoost (0.0 à 1.0)
+  v9Regime     String?  // Régime de marché: TREND, RANGE, HIGH_VOL
 
   @@index([closedAt])
 }
