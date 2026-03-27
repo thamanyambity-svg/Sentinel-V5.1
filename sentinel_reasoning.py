@@ -12,7 +12,9 @@ class SovereignGovernor:
     def __init__(self):
         self.fundamental_file = 'fundamental_state.json'
         self.nexus = NexusArchitect()
-        
+        # Rolling history for real Z-score computation (max 100 observations)
+        self._divergence_history = []
+
     def load_vanguard_spm(self):
         """Récupération du Score de Polarité du Marché (SPM) de Vanguard."""
         if os.path.exists(self.fundamental_file):
@@ -20,24 +22,83 @@ class SovereignGovernor:
                 return json.load(f)
         return {"spm_score": 0, "market_mood": "NEUTRAL"}
 
-    def apply_kelly_criterion(self, prob_win, win_loss_ratio=1.5):
-        """Calcule le % de capital à risquer selon le critère de Kelly."""
-        # Kelly % = (p * b - q) / b  où b = win/loss ratio, p = prob_win, q = prob_loss
-        p = prob_win
-        q = 1 - p
-        b = win_loss_ratio
-        
-        kelly_f = (p * b - q) / b
-        # On applique un "Fractional Kelly" (25% du résultat) pour la sécurité institutionnelle
-        return max(0, kelly_f * 0.25)
+    def _load_trade_stats(self, n: int = 30) -> dict:
+        """
+        Charge les statistiques réelles depuis trade_history.json.
+        Retourne {'p': winrate, 'b': avg_win/avg_loss, 'n': nb_trades}.
+        Utilisé par apply_kelly_criterion() pour remplacer le ratio hardcodé 1.5.
+        """
+        candidates = []
+        mt5_path = os.getenv("MT5_FILES_PATH", "")
+        if mt5_path:
+            candidates.append(os.path.join(mt5_path, "trade_history.json"))
+        candidates.append("trade_history.json")
 
-    def calculate_z_score_divergence(self, tech_signal, spm_score):
-        """Calcule l'écart statistique (Z-Score) entre Technique et Sémantique."""
-        # Modèle simplifié : On compare l'alignement des vecteurs
+        for path in candidates:
+            try:
+                if not os.path.exists(path):
+                    continue
+                with open(path, 'r') as f:
+                    trades = json.load(f)
+                if not isinstance(trades, list):
+                    continue
+                # Only closed trades, sorted by entry_time, last n
+                closed = [t for t in trades if t.get('closed', False)]
+                if len(closed) < 5:
+                    continue
+                closed = sorted(closed, key=lambda t: t.get('entry_time', 0))[-n:]
+                pnls = [t.get('profit', 0.0) for t in closed]
+                wins   = [p for p in pnls if p > 0]
+                losses = [abs(p) for p in pnls if p < 0]
+                if not wins or not losses:
+                    continue
+                p = len(wins) / len(pnls)
+                b = (sum(wins) / len(wins)) / (sum(losses) / len(losses))
+                return {'p': round(p, 3), 'b': round(b, 3), 'n': len(closed)}
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError, ZeroDivisionError):
+                pass
+        # Default conservative fallback when no history available
+        return {'p': 0.5, 'b': 1.5, 'n': 0}
+
+    def apply_kelly_criterion(self, prob_win: float, win_loss_ratio: float = 1.5) -> float:
+        """Calcule le % de capital à risquer selon le critère de Kelly (Fractional 25%)."""
+        p = prob_win
+        q = 1.0 - p
+        b = win_loss_ratio
+        kelly_f = (p * b - q) / b
+        # Fractional Kelly (25%) — pratique institutionnelle standard (Thorp, Renaissance)
+        return max(0.0, kelly_f * 0.25)
+
+    def calculate_z_score_divergence(self, tech_signal: str, spm_score: float) -> float:
+        """
+        Z-score réel de la divergence Technique/Sentiment sur fenêtre glissante ≥ 30 obs.
+        Remplace l'ancienne formule arbitraire abs(tech - spm/2) qui n'était pas un Z-score.
+        Z > 1.5 → divergence statistiquement anormale (signal contre-tendance potentiel).
+
+        Échelles : tech_val ∈ {-1, +1}, spm_score ∈ [-1, +1] (score de polarité marché).
+        La divergence abs(tech_val - spm_score) ∈ [0, 2] mais le Z-score est relatif à
+        sa propre distribution historique, donc l'échelle absolue n'affecte pas la validité.
+        """
         tech_val = 1.0 if tech_signal == "BUY" else -1.0
-        # Normalisation arbitraire pour le calcul de l'écart
-        divergence = abs(tech_val - (spm_score / 2.0))
-        return divergence # Si > 1.5, on considère une déviation significative
+        # Both tech_val and spm_score are in [-1, +1]; divergence ∈ [0, 2]
+        divergence = abs(tech_val - spm_score)
+
+        self._divergence_history.append(divergence)
+        # Keep rolling window of last 100 observations
+        if len(self._divergence_history) > 100:
+            self._divergence_history = self._divergence_history[-100:]
+
+        n = len(self._divergence_history)
+        if n < 30:
+            # Not enough history yet — return raw divergence as proxy
+            return divergence
+
+        mu = sum(self._divergence_history) / n
+        variance = sum((x - mu) ** 2 for x in self._divergence_history) / (n - 1)
+        sigma = variance ** 0.5
+        if sigma < 1e-8:
+            return 0.0
+        return (divergence - mu) / sigma
 
     def _read_live_imbalance(self, asset: str) -> float:
         """
@@ -171,6 +232,24 @@ class SovereignGovernor:
             decision = "IGNORE"
             risk_lot_multiplier = 0.0
             reason = "🚨 KILL SWITCH NEXUS ACTIVÉ (Précision dégradée)."
+
+        # ============================================================
+        # KELLY RÉEL — calibration sur données live (trade_history.json)
+        # Remplace le win_loss_ratio hardcodé 1.5 par les valeurs réelles.
+        # ============================================================
+        stats = self._load_trade_stats(n=30)
+        kelly_frac = self.apply_kelly_criterion(stats['p'], stats['b'])
+        # Map Kelly fraction → lot_multiplier scale [0.3, 1.0].
+        # Reference: 0.06 = Fractional Kelly (25%) at winrate=0.55, b=1.5 — typical solid
+        # system. kelly_frac ≥ 0.06 → full scale 1.0; kelly_frac = 0 → minimum scale 0.3.
+        if stats['n'] >= 10 and risk_lot_multiplier > 0.0:
+            _KELLY_REFERENCE = 0.06  # Kelly fraction at normal profitable operation
+            kelly_scale = max(0.3, min(1.0, kelly_frac / _KELLY_REFERENCE))
+            risk_lot_multiplier = round(risk_lot_multiplier * kelly_scale, 2)
+            print(f"[SOVEREIGN] 📊 Kelly réel: p={stats['p']:.2f}, b={stats['b']:.2f}, "
+                  f"kelly={kelly_frac:.3f} → scale={kelly_scale:.2f}, lot_mult={risk_lot_multiplier:.2f}")
+        else:
+            print(f"[SOVEREIGN] 📊 Kelly fallback (données insuffisantes: {stats['n']} trades fermés)")
 
         action_plan = {
             "timestamp": datetime.now().isoformat(),

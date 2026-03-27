@@ -2,12 +2,12 @@
 //|                     AladdinPro_V719_TrapHunter.mq5               |
 //|              Aladdin Pro V7.19 — Trap Hunter                     |
 //|        Architecture : V7 Risk Core + Python Bridge (Sentinel)    |
-//|        V7.19 : ComputeWickImbalance() — Trap Hunter              |
+//|        V7.20 : ComputeAdaptiveImbalance() — Trap Hunter         |
 //|                sans MarketBookGet (Compatible Brokers Retail)     |
 //|                        Copyright 2026, Ambity Project            |
 //+------------------------------------------------------------------+
 #property copyright "Ambity Project"
-#property version   "7.19"
+#property version   "7.20"
 #property strict
 #property description "Aladdin Pro V7.19 — Trap Hunter | Wick Rejection Imbalance | Python Sentinel Bridge"
 
@@ -127,7 +127,8 @@ input group "=== EXECUTION FILTERS ==="
 input double MaxAllowedSpreadPoints  = 300;
 
 input group "=== TAKE PROFIT & STOPS ==="
-input double TakeProfitUSD         = 1.50;
+input double ATRMultiplierSL       = 1.2;    // SL = ATR × ce multiplicateur
+input double ATRMultiplierTP       = 2.5;    // TP = ATR × ce multiplicateur
 input bool   EnableAutoBreakeven   = true;
 input double BreakevenTriggerProfit = 1.50;
 input bool   EnableTrailingStop    = true;
@@ -143,7 +144,7 @@ input double SuperTrendMult         = 3.0;   // Multiplicateur ATR SuperTrend
 
 input group "=== TIMEFRAMES ==="
 input ENUM_TIMEFRAMES TF_Entry           = PERIOD_M5;   // Timeframe pour signaux d'entree
-input ENUM_TIMEFRAMES TF_Imbalance       = PERIOD_M5;   // Timeframe pour ComputeWickImbalance
+input ENUM_TIMEFRAMES TF_Imbalance       = PERIOD_M5;   // Timeframe pour ComputeAdaptiveImbalance
 input ENUM_TIMEFRAMES TF_SuperTrend      = PERIOD_H1;   // Timeframe SuperTrend (filtre tendance)
 
 input group "=== TESTING & EXPORT ==="
@@ -165,30 +166,58 @@ bool     tradingEnabled     = true;
 int      todayTradeCount    = 0;
 datetime todayDate=0, lastTradeTime=0;
 
-double ComputeWickImbalance(string sym, ENUM_TIMEFRAMES tf)
+double ComputeAdaptiveImbalance(string sym, ENUM_TIMEFRAMES tf)
 {
-    double o[3], h[3], l[3], c[3];
-    if(CopyOpen (sym, tf, 1, 3, o) < 3) return 0.0;
-    if(CopyHigh (sym, tf, 1, 3, h) < 3) return 0.0;
-    if(CopyLow  (sym, tf, 1, 3, l) < 3) return 0.0;
-    if(CopyClose(sym, tf, 1, 3, c) < 3) return 0.0;
-    double buy_pressure = 0.0, sell_pressure = 0.0;
-    for(int i = 0; i < 3; i++)
+    // 1. ATR court-terme et moyenne sur 50 bougies → volatility ratio
+    int hAtr = iATR(sym, tf, 14);
+    double atr_now[1], atr_history[50];
+    if(CopyBuffer(hAtr, 0, 0, 1, atr_now)     < 1)  return 0.0;
+    if(CopyBuffer(hAtr, 0, 0, 50, atr_history) < 50) return 0.0;
+
+    double atr_mean = 0.0;
+    for(int j = 0; j < 50; j++) atr_mean += atr_history[j];
+    atr_mean /= 50.0;
+    if(atr_mean < 1e-10) return 0.0;
+
+    // 2. Fenêtre adaptative [10..50] inversely proportional to volatility.
+    //    At normal volatility (vol_ratio=1.0) → window=20.
+    //    High volatility (vol_ratio=2.0) → window=10 (shorter, more reactive).
+    //    Low volatility  (vol_ratio=0.4) → window=50 (longer, more stable).
+    //    Floor at 0.1 prevents division issues and caps window at 200 (clamped to 50).
+    double vol_ratio = atr_now[0] / atr_mean;
+    int window = (int)MathMax(10, MathMin(50, MathRound(20.0 / MathMax(vol_ratio, 0.1))));
+
+    // 3. Lecture OHLC sur la fenêtre complète
+    double o[], h[], l[], c[];
+    if(CopyOpen (sym, tf, 1, window, o) < window) return 0.0;
+    if(CopyHigh (sym, tf, 1, window, h) < window) return 0.0;
+    if(CopyLow  (sym, tf, 1, window, l) < window) return 0.0;
+    if(CopyClose(sym, tf, 1, window, c) < window) return 0.0;
+
+    // 4. Pondération exponentielle : bougies récentes (indice élevé) comptent davantage
+    double buy_pressure = 0.0, sell_pressure = 0.0, total_weight = 0.0;
+    for(int i = 0; i < window; i++)
     {
+        double weight      = MathExp(-0.05 * (window - 1 - i));
         double body_top    = MathMax(o[i], c[i]);
         double body_bottom = MathMin(o[i], c[i]);
-        double wick_up     = h[i] - body_top;    // meche haute -> pression vendeuse
-        double wick_down   = body_bottom - l[i]; // meche basse -> pression acheteuse
+        double wick_up     = h[i] - body_top;
+        double wick_down   = body_bottom - l[i];
         double range       = h[i] - l[i];
         if(range > 1e-10)
         {
-            sell_pressure += wick_up   / range;
-            buy_pressure  += wick_down / range;
+            sell_pressure += weight * (wick_up   / range);
+            buy_pressure  += weight * (wick_down / range);
+            total_weight  += weight;
         }
     }
-    double total = buy_pressure + sell_pressure;
-    if(total < 1e-10) return 0.0;
-    return (buy_pressure - sell_pressure) / total;
+    if(total_weight < 1e-10) return 0.0;
+
+    // 5. tanh normalization → output ∈ [-1, +1], smoothing extreme raw values.
+    //    Scale factor 3.0 maps ±0.33 raw imbalance to ~±0.95 output,
+    //    providing meaningful saturation without clipping realistic signals.
+    double raw = (buy_pressure - sell_pressure) / total_weight;
+    return MathTanh(raw * 3.0);
 }
 
 void ExportTickData_V7()
@@ -222,8 +251,8 @@ void ExportTickData_V7()
         string active_strat = (adx_val > 35 && rsi_val > 50) ? "MOM_BUY" :
                               (adx_val > 35 && rsi_val < 50) ? "MOM_SELL" : "WAIT";
 
-        // V7.19 Trap Hunter : imbalance via wick rejection (sans MarketBookGet)
-        double imb = ComputeWickImbalance(symbols[i], TF_Imbalance);
+        // V7.20 Trap Hunter : imbalance via wick rejection adaptatif (10–50 bougies, EWM)
+        double imb = ComputeAdaptiveImbalance(symbols[i], TF_Imbalance);
 
         if(!first) json += ",";
         first = false;
@@ -263,17 +292,17 @@ void SaveTradeIndicators(ulong ticket, string sym, string tech_signal,
                          double finbert_score, double entry_price,
                          double imb_at_entry)
 {
-    if(trackedCount >= 200) return;
+    int slot = trackedCount % 200;  // Circular buffer — réutilise les anciens slots après 200 trades
 
-    trackedTrades[trackedCount].ticket        = ticket;
-    trackedTrades[trackedCount].symbol        = sym;
-    trackedTrades[trackedCount].tech_signal   = tech_signal;
-    trackedTrades[trackedCount].finbert_score = finbert_score;
-    trackedTrades[trackedCount].imbalance     = imb_at_entry;
-    trackedTrades[trackedCount].entry_price   = entry_price;
-    trackedTrades[trackedCount].entry_time    = TimeCurrent();
-    trackedTrades[trackedCount].profit        = 0.0;
-    trackedTrades[trackedCount].closed        = false;
+    trackedTrades[slot].ticket        = ticket;
+    trackedTrades[slot].symbol        = sym;
+    trackedTrades[slot].tech_signal   = tech_signal;
+    trackedTrades[slot].finbert_score = finbert_score;
+    trackedTrades[slot].imbalance     = imb_at_entry;
+    trackedTrades[slot].entry_price   = entry_price;
+    trackedTrades[slot].entry_time    = TimeCurrent();
+    trackedTrades[slot].profit        = 0.0;
+    trackedTrades[slot].closed        = false;
     trackedCount++;
 
     PrintFormat("[INFO][TRACK] %s | tech=%s | finbert=%.3f | imbalance=%.3f",
@@ -312,7 +341,8 @@ void ExportTradeHistory_V7()
 {
     if(HistorySelect(TimeCurrent() - 86400 * 7, TimeCurrent()))
     {
-        for(int i = 0; i < trackedCount; i++)
+        int exportCount = MathMin(trackedCount, 200);
+        for(int i = 0; i < exportCount; i++)
         {
             if(trackedTrades[i].closed) continue;
             ulong ticket = trackedTrades[i].ticket;
@@ -326,7 +356,8 @@ void ExportTradeHistory_V7()
 
     string json = "[";
     bool first = true;
-    for(int i = 0; i < trackedCount; i++)
+    int exportCount = MathMin(trackedCount, 200);
+    for(int i = 0; i < exportCount; i++)
     {
         if(!first) json += ",";
         first = false;
@@ -429,25 +460,47 @@ string ReadCommandFile(string path)
 
 string ExtractJSONValue(string src, string key)
 {
-    int kp = StringFind(src, "\"" + key + "\"");
+    string search_key = "\"" + key + "\"";
+    int kp = StringFind(src, search_key);
     if(kp == -1) return "";
-    int cp = StringFind(src, ":", kp);
+
+    // Find ':' that follows the key token
+    int cp = StringFind(src, ":", kp + StringLen(search_key));
     if(cp == -1) return "";
-    int start = StringFind(src, "\"", cp);
-    if(start == -1)
+
+    // Skip all whitespace characters (space, tab, CR, LF) after ':'
+    int start = cp + 1;
+    int src_len = StringLen(src);
+    while(start < src_len)
     {
-        start = cp + 1;
-        while(start < StringLen(src) && StringGetCharacter(src, start) == ' ') start++;
-        int end_c = StringFind(src, ",", start);
-        int end_b = StringFind(src, "}", start);
-        int end   = (end_c != -1 && end_b != -1) ? (int)MathMin(end_c, end_b)
-                  : (end_c != -1 ? end_c : end_b);
+        ushort ch = StringGetCharacter(src, start);
+        if(ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r') break;
+        start++;
+    }
+    if(start >= src_len) return "";
+
+    ushort first_char = StringGetCharacter(src, start);
+    if(first_char == '"')
+    {
+        // String value — read until closing '"'
+        int end = StringFind(src, "\"", start + 1);
         if(end == -1) return "";
+        return StringSubstr(src, start + 1, end - start - 1);
+    }
+    else
+    {
+        // Numeric / boolean / null — read until delimiter or whitespace
+        int end = start;
+        while(end < src_len)
+        {
+            ushort ch = StringGetCharacter(src, end);
+            if(ch == ',' || ch == '}' || ch == ']' ||
+               ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') break;
+            end++;
+        }
+        if(end == start) return "";
         return StringSubstr(src, start, end - start);
     }
-    int end = StringFind(src, "\"", start + 1);
-    if(end == -1) return "";
-    return StringSubstr(src, start + 1, end - start - 1);
 }
 
 void ProcessBridgeCommand(string json)
@@ -488,8 +541,8 @@ void ProcessBridgeCommand(string json)
     if(CopyBuffer(hAtr, 0, 0, 1, atr_buf) < 1) return;
     double atrVal = atr_buf[0];
 
-    double slDist = atrVal * 1.5;
-    double tpDist = slDist * 2.5;
+    double slDist = atrVal * ATRMultiplierSL;
+    double tpDist = atrVal * ATRMultiplierTP;
     double lot    = CalculateLotSize(sym, slDist) * multiplier;
     double price  = (decision == "BUY") ? SymbolInfoDouble(sym, SYMBOL_ASK)
                                         : SymbolInfoDouble(sym, SYMBOL_BID);
@@ -498,10 +551,10 @@ void ProcessBridgeCommand(string json)
     double tp     = NormalizeDouble((decision == "BUY") ? price + tpDist : price - tpDist, digits);
 
     // Calculer l'imbalance une seule fois pour la decision ET le tracking
-    double imb_now = ComputeWickImbalance(sym, TF_Imbalance);
+    double imb_now = ComputeAdaptiveImbalance(sym, TF_Imbalance);
 
-    bool ok = (decision == "BUY") ? trade.Buy(lot, sym, price, sl, tp, "ALADDIN V7.19")
-                                  : trade.Sell(lot, sym, price, sl, tp, "ALADDIN V7.19");
+    bool ok = (decision == "BUY") ? trade.Buy(lot, sym, price, sl, tp, "ALADDIN V7.20")
+                                  : trade.Sell(lot, sym, price, sl, tp, "ALADDIN V7.20");
     if(ok)
     {
         ulong ticket = trade.ResultOrder();
@@ -616,15 +669,15 @@ int OnInit()
     trackedCount       = 0;
     EventSetTimer(TimerSeconds);
     ExportStatus_V7(); // Heartbeat initial — status.json créé dès le démarrage
-    Print("ALADDIN PRO V7.19 -- TRAP HUNTER ACTIVE");
-    Print("ComputeWickImbalance() initialise -- Brokers retail compatibles.");
+    Print("ALADDIN PRO V7.20 -- TRAP HUNTER ACTIVE");
+    Print("ComputeAdaptiveImbalance() initialise -- fenetre 10-50 bougies, EWM, tanh.");
     return(INIT_SUCCEEDED);
 }
 void OnDeinit(const int reason)
 {
     EventKillTimer();
     ExportTradeHistory_V7();
-    Print("ALADDIN V7.19 : Systemes mis en veille.");
+    Print("ALADDIN V7.20 : Systemes mis en veille.");
 }
 void OnTimer()
 {
