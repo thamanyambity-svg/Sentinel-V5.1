@@ -23,6 +23,7 @@ export default async function DashboardPage() {
         if (t.v9Regime) acc[t.v9Regime] = (acc[t.v9Regime] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
+    // Falls back to '—' when no V9 trades exist yet
     const dominantRegime = Object.entries(regimeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
 
     return (
