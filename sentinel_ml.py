@@ -50,6 +50,19 @@ FEATURE_NAMES = [
     "delta", "absorption",
 ]
 
+# NIVEAU 2: Multi-Timeframe Bias (8 features) — CONDITIONAL deployment
+FEATURE_NAMES_NIVEAU2 = FEATURE_NAMES + [
+    # Bloc 6 — Multi-Timeframe Intelligence (NIVEAU 2 - Conditional)
+    "htf_bias",                    # H1: EMA50 > EMA200
+    "d1_trend",                    # Daily trend direction
+    "m5_structure",                # M5 price > EMA20
+    "m15_confirmation",            # M15 price > EMA50
+    "htf_momentum",                # H1 momentum (ret_20)
+    "d1_resistance_distance",      # Distance to daily levels
+    "ht_volatility_regime",        # H1 vol compression (good entry)
+    "cross_tf_alignment",          # All TF agree? (0-1 consensus)
+]
+
 
 def _ema(series: list, period: int) -> float:
     """Calculate Exponential Moving Average."""
@@ -327,8 +340,45 @@ def _orderflow_features(tick_data: dict) -> dict:
     }
 
 
+def _multiframe_features(candles_by_tf: dict = None) -> dict:
+    """
+    Bloc 6 — Multi-Timeframe Intelligence (NIVEAU 2 - Optional)
 
-def build_features(tick_data: dict) -> dict:
+    Requires: Dict of candles by timeframe (M5, M15, H1, D1)
+    Returns: 8 institutional-grade features (or zeros if not available)
+    """
+    if not candles_by_tf:
+        # Return zeros if no MTF data available (Phase 1-1.5)
+        return {
+            "htf_bias": 0.0,
+            "d1_trend": 0.0,
+            "m5_structure": 0.0,
+            "m15_confirmation": 0.0,
+            "htf_momentum": 0.0,
+            "d1_resistance_distance": 0.0,
+            "ht_volatility_regime": 0.0,
+            "cross_tf_alignment": 0.0,
+        }
+
+    # Import candle builder if available
+    try:
+        from sentinel_candle_builder import compute_mtf_features
+        return compute_mtf_features(candles_by_tf)
+    except ImportError:
+        # Fallback: return zeros
+        return {
+            "htf_bias": 0.0,
+            "d1_trend": 0.0,
+            "m5_structure": 0.0,
+            "m15_confirmation": 0.0,
+            "htf_momentum": 0.0,
+            "d1_resistance_distance": 0.0,
+            "ht_volatility_regime": 0.0,
+            "cross_tf_alignment": 0.0,
+        }
+
+
+def build_features(tick_data: dict, candles_by_tf: dict = None) -> dict:
     """
     Build XAUUSD-optimized feature vector from live tick/candle data.
 
@@ -351,12 +401,20 @@ def build_features(tick_data: dict) -> dict:
     features.update(_session_features(tick_data))
     features.update(_momentum_features(tick_data))
     features.update(_orderflow_features(tick_data))  # V9.1 Orderflow addition
+    features.update(_multiframe_features(candles_by_tf))  # NIVEAU 2 optional
     return features
 
 
-def features_to_array(features: dict) -> list:
-    """Convert feature dict to ordered list matching FEATURE_NAMES."""
-    return [features.get(name, 0.0) for name in FEATURE_NAMES]
+def features_to_array(features: dict, include_niveau2: bool = False) -> list:
+    """
+    Convert feature dict to ordered list matching FEATURE_NAMES.
+
+    Args:
+        features: Feature dictionary
+        include_niveau2: If True, use FEATURE_NAMES_NIVEAU2 (30 features), else use FEATURE_NAMES (22)
+    """
+    feature_names = FEATURE_NAMES_NIVEAU2 if include_niveau2 else FEATURE_NAMES
+    return [features.get(name, 0.0) for name in feature_names]
 
 
 def build_target(trade: dict) -> int:
