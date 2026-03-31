@@ -1,14 +1,14 @@
 """
-sentinel_ml.py — V9 XGBoost ML Model for Sentinel
-===================================================
-Replaces the Nexus LSTM placeholder with a robust, interpretable XGBoost
-classifier trained on real trade history (trade_history.json).
+sentinel_ml.py — V9 XGBoost ML Model for Sentinel (XAUUSD Gold Optimized)
+==========================================================================
+Production-grade XGBoost classifier with XAUUSD-optimized features:
+  1. Volatility Regime   (atr, atr_ratio, range_ratio, vol_compression)
+  2. Liquidity/Imbalance (imbalance, wick_ratio, liquidity_grab)
+  3. Session Timing      (london, newyork, asia)
+  4. Momentum Structure  (ret_5, ret_10, momentum_acc, break_high, break_low)
 
 Architecture:
-    Feature Engine → XGBClassifier → predict_proba → Confluence Engine
-
-Features (8 dimensions):
-    return_5, return_20, atr, atr_ratio, candle_range, imbalance, rsi, spread
+    Feature Engine → StandardScaler → XGBClassifier → predict_proba → Confluence Engine
 
 Target:
     Binary classification: 1 = trade hit TP before SL, 0 = otherwise
@@ -25,59 +25,173 @@ try:
 except ImportError:
     XGBClassifier = None
 
+try:
+    from sklearn.preprocessing import StandardScaler
+except ImportError:
+    StandardScaler = None
+
 logger = logging.getLogger("SENTINEL_ML")
 
 MODEL_PATH = "sentinel_xgb_model.joblib"
+SCALER_PATH = "sentinel_scaler.joblib"
+
 FEATURE_NAMES = [
-    "return_5", "return_20", "atr", "atr_ratio",
-    "candle_range", "imbalance", "rsi", "spread"
+    # Bloc 1 — Volatility
+    "atr", "atr_ratio", "range_ratio", "vol_compression",
+    # Bloc 2 — Liquidity / Imbalance
+    "imbalance", "wick_ratio", "liquidity_grab",
+    # Bloc 3 — Session Timing
+    "london", "newyork", "asia",
+    # Bloc 4 — Momentum Structure
+    "ret_5", "ret_10", "momentum_acc", "break_high", "break_low",
 ]
 
 
-def build_features(tick_data: dict) -> dict:
-    """
-    Build feature vector from live tick/candle data.
-
-    Expected tick_data keys (from ticks_v3.json or enriched context):
-        closes   : list of recent close prices (≥20 elements)
-        atr      : current ATR value (float)
-        atr_hist : list of recent ATR values (≥20 elements)
-        high     : current candle high
-        low      : current candle low
-        imbalance: wick imbalance from EA (-1..+1)
-        rsi      : RSI value (0..100)
-        spread   : current spread
-    """
-    closes = tick_data.get("closes", [])
+def _volatility_features(tick_data: dict) -> dict:
+    """Bloc 1 — Volatility regime features (XAUUSD priority #1)."""
     atr = tick_data.get("atr", 0.0)
     atr_hist = tick_data.get("atr_hist", [])
     high = tick_data.get("high", 0.0)
     low = tick_data.get("low", 0.0)
-    imbalance = tick_data.get("imbalance", 0.0)
-    rsi = tick_data.get("rsi", 50.0)
-    spread = tick_data.get("spread", 0.0)
+    closes = tick_data.get("closes", [])
 
-    # Return features as percentage changes (normalized across instruments)
-    return_5 = ((closes[-1] - closes[-5]) / closes[-5]) if len(closes) >= 5 and closes[-5] != 0 else 0.0
-    return_20 = ((closes[-1] - closes[-20]) / closes[-20]) if len(closes) >= 20 and closes[-20] != 0 else 0.0
-
-    # ATR ratio = current ATR / mean of recent ATR history
-    atr_mean = float(np.mean(atr_hist)) if atr_hist else atr
+    atr_mean = float(np.mean(atr_hist[-50:])) if len(atr_hist) >= 1 else atr
     atr_ratio = (atr / atr_mean) if atr_mean > 1e-10 else 1.0
 
-    # Candle range
     candle_range = high - low
+    range_ratio = (candle_range / atr) if atr > 1e-10 else 1.0
+
+    vol_compression = float(np.std(closes[-20:])) if len(closes) >= 20 else 0.0
 
     return {
-        "return_5": return_5,
-        "return_20": return_20,
         "atr": atr,
         "atr_ratio": atr_ratio,
-        "candle_range": candle_range,
-        "imbalance": imbalance,
-        "rsi": rsi,
-        "spread": spread,
+        "range_ratio": range_ratio,
+        "vol_compression": vol_compression,
     }
+
+
+def _liquidity_features(tick_data: dict) -> dict:
+    """Bloc 2 — Liquidity / Imbalance features (main competitive edge)."""
+    opens = tick_data.get("opens", [])
+    closes = tick_data.get("closes", [])
+    highs = tick_data.get("highs", [])
+    lows = tick_data.get("lows", [])
+    high = tick_data.get("high", 0.0)
+
+    window = 30
+    n = min(window, len(opens), len(closes), len(highs), len(lows))
+
+    buy_score = 0.0
+    sell_score = 0.0
+
+    if n > 0:
+        for j in range(-n, 0):
+            body_top = max(opens[j], closes[j])
+            body_bot = min(opens[j], closes[j])
+            wick_up = highs[j] - body_top
+            wick_down = body_bot - lows[j]
+            r = highs[j] - lows[j] + 1e-9
+            sell_score += wick_up / r
+            buy_score += wick_down / r
+
+    raw_imbalance = (buy_score - sell_score) / max(n, 1)
+    imbalance = float(np.tanh(raw_imbalance * 3))
+
+    wick_ratio = (sell_score + buy_score) / max(n, 1)
+
+    # Liquidity grab detection: current high breaks recent swing high
+    liquidity_grab = 0
+    if len(highs) > window and high > 0:
+        recent_high = max(highs[-window - 1:-1]) if len(highs) > window else 0
+        if recent_high > 0 and high > recent_high:
+            liquidity_grab = 1
+
+    return {
+        "imbalance": imbalance,
+        "wick_ratio": float(wick_ratio),
+        "liquidity_grab": liquidity_grab,
+    }
+
+
+def _session_features(tick_data: dict) -> dict:
+    """Bloc 3 — Session timing features (critical for XAUUSD)."""
+    hour = tick_data.get("hour", -1)
+
+    # If no hour provided, try to extract from timestamp
+    if hour < 0:
+        ts = tick_data.get("timestamp", "")
+        if ts:
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(str(ts))
+                hour = dt.hour
+            except (ValueError, TypeError):
+                hour = -1
+
+    return {
+        "london": 1 if 8 <= hour <= 12 else 0,
+        "newyork": 1 if 13 <= hour <= 17 else 0,
+        "asia": 1 if 0 <= hour <= 6 else 0,
+    }
+
+
+def _momentum_features(tick_data: dict) -> dict:
+    """Bloc 4 — Momentum structure features."""
+    closes = tick_data.get("closes", [])
+    highs = tick_data.get("highs", [])
+    lows = tick_data.get("lows", [])
+
+    c = closes[-1] if closes else 0.0
+    ret_5 = (c - closes[-5]) if len(closes) >= 5 else 0.0
+    ret_10 = (c - closes[-10]) if len(closes) >= 10 else 0.0
+
+    # Momentum acceleration (2nd derivative)
+    mom_recent = (c - closes[-5]) if len(closes) >= 5 else 0.0
+    mom_prior = (closes[-5] - closes[-10]) if len(closes) >= 10 else 0.0
+    momentum_acc = mom_recent - mom_prior
+
+    # Break structure
+    break_high = 0
+    break_low = 0
+    if len(highs) >= 10 and c > 0:
+        if c > max(highs[-10:]):
+            break_high = 1
+    if len(lows) >= 10 and c > 0:
+        if c < min(lows[-10:]):
+            break_low = 1
+
+    return {
+        "ret_5": ret_5,
+        "ret_10": ret_10,
+        "momentum_acc": momentum_acc,
+        "break_high": break_high,
+        "break_low": break_low,
+    }
+
+
+def build_features(tick_data: dict) -> dict:
+    """
+    Build XAUUSD-optimized feature vector from live tick/candle data.
+
+    Expected tick_data keys (from ticks_v3.json or enriched context):
+        closes    : list of recent close prices (≥20 elements)
+        opens     : list of recent open prices (≥30 elements)
+        highs     : list of recent high prices (≥30 elements)
+        lows      : list of recent low prices (≥30 elements)
+        atr       : current ATR value (float)
+        atr_hist  : list of recent ATR values (≥20 elements)
+        high      : current candle high
+        low       : current candle low
+        hour      : current hour (0-23) for session detection
+        timestamp : ISO timestamp string (fallback for hour)
+    """
+    features = {}
+    features.update(_volatility_features(tick_data))
+    features.update(_liquidity_features(tick_data))
+    features.update(_session_features(tick_data))
+    features.update(_momentum_features(tick_data))
+    return features
 
 
 def features_to_array(features: dict) -> list:
@@ -99,16 +213,18 @@ def build_target(trade: dict) -> int:
 class SentinelMLModel:
     """
     XGBoost classifier for trade outcome prediction.
-    Replaces the Nexus LSTM placeholder with a production-grade model.
+    XAUUSD-optimized with StandardScaler normalization.
     """
 
-    def __init__(self, model_path: str = MODEL_PATH):
+    def __init__(self, model_path: str = MODEL_PATH, scaler_path: str = SCALER_PATH):
         self.model_path = model_path
+        self.scaler_path = scaler_path
         self.model = None
+        self.scaler = None
         self._load_model()
 
     def _load_model(self):
-        """Load saved model from disk if available."""
+        """Load saved model and scaler from disk if available."""
         if os.path.exists(self.model_path):
             try:
                 self.model = joblib.load(self.model_path)
@@ -116,12 +232,22 @@ class SentinelMLModel:
             except Exception as e:
                 logger.warning(f"[ML] Failed to load model: {e}")
                 self.model = None
-        else:
+
+        if os.path.exists(self.scaler_path):
+            try:
+                self.scaler = joblib.load(self.scaler_path)
+                logger.info(f"[ML] Scaler loaded from {self.scaler_path}")
+            except Exception as e:
+                logger.warning(f"[ML] Failed to load scaler: {e}")
+                self.scaler = None
+
+        if self.model is None:
             logger.info("[ML] No saved model found — will need training first")
 
     def train(self, X: np.ndarray, y: np.ndarray) -> dict:
         """
         Train XGBoost on feature matrix X and binary target y.
+        Applies StandardScaler normalization before training.
         Returns training metrics dict.
         """
         if XGBClassifier is None:
@@ -131,6 +257,16 @@ class SentinelMLModel:
         if len(X) < 30:
             logger.warning(f"[ML] Only {len(X)} samples — minimum 30 required for training")
             return {"error": f"insufficient data ({len(X)} samples)"}
+
+        # Fit and apply StandardScaler normalization
+        if StandardScaler is not None:
+            self.scaler = StandardScaler()
+            X_scaled = self.scaler.fit_transform(X)
+            joblib.dump(self.scaler, self.scaler_path)
+            logger.info(f"[ML] Scaler fitted and saved to {self.scaler_path}")
+        else:
+            X_scaled = X
+            logger.warning("[ML] sklearn not available — training without normalization")
 
         self.model = XGBClassifier(
             n_estimators=200,
@@ -142,16 +278,21 @@ class SentinelMLModel:
             use_label_encoder=False,
             random_state=42,
         )
-        self.model.fit(X, y)
+        self.model.fit(X_scaled, y)
 
         # Save model
         joblib.dump(self.model, self.model_path)
-        logger.info(f"[ML] Model trained on {len(X)} samples, saved to {self.model_path}")
+        logger.info(f"[ML] Model trained on {len(X)} samples ({len(FEATURE_NAMES)} features), saved to {self.model_path}")
 
         # Return basic training metrics
-        preds = self.model.predict(X)
+        preds = self.model.predict(X_scaled)
         train_acc = float(np.mean(preds == y))
-        return {"train_accuracy": round(train_acc, 4), "n_samples": len(X)}
+        return {
+            "train_accuracy": round(train_acc, 4),
+            "n_samples": len(X),
+            "n_features": X.shape[1],
+            "feature_names": FEATURE_NAMES,
+        }
 
     def predict_proba(self, features: dict) -> float:
         """
@@ -162,6 +303,14 @@ class SentinelMLModel:
             return 0.5
 
         arr = np.array([features_to_array(features)])
+
+        # Apply scaler if available
+        if self.scaler is not None:
+            try:
+                arr = self.scaler.transform(arr)
+            except Exception as e:
+                logger.warning(f"[ML] Scaler transform failed: {e}")
+
         try:
             proba = self.model.predict_proba(arr)[0][1]
             return float(proba)
@@ -207,21 +356,31 @@ def train_from_trade_history(history_path: str = "trade_history.json",
     if len(closed) < 30:
         return {"error": f"Only {len(closed)} closed trades — need ≥30 for training"}
 
-    # Build feature matrix and targets
+    # Build feature matrix and targets using XAUUSD-optimized features.
     # Each trade record should contain the features captured at entry time.
-    # For trades that only have basic fields, we synthesize minimal features.
     X_list = []
     y_list = []
     for t in closed:
         feat = {
-            "return_5": t.get("return_5", 0.0),
-            "return_20": t.get("return_20", 0.0),
+            # Bloc 1 — Volatility
             "atr": t.get("atr", 0.0),
             "atr_ratio": t.get("atr_ratio", 1.0),
-            "candle_range": t.get("candle_range", 0.0),
+            "range_ratio": t.get("range_ratio", 1.0),
+            "vol_compression": t.get("vol_compression", 0.0),
+            # Bloc 2 — Liquidity
             "imbalance": t.get("imbalance", 0.0),
-            "rsi": t.get("rsi", 50.0),
-            "spread": t.get("spread", 0.0),
+            "wick_ratio": t.get("wick_ratio", 0.0),
+            "liquidity_grab": t.get("liquidity_grab", 0),
+            # Bloc 3 — Session
+            "london": t.get("london", 0),
+            "newyork": t.get("newyork", 0),
+            "asia": t.get("asia", 0),
+            # Bloc 4 — Momentum
+            "ret_5": t.get("ret_5", 0.0),
+            "ret_10": t.get("ret_10", 0.0),
+            "momentum_acc": t.get("momentum_acc", 0.0),
+            "break_high": t.get("break_high", 0),
+            "break_low": t.get("break_low", 0),
         }
         X_list.append(features_to_array(feat))
         y_list.append(build_target(t))

@@ -7,7 +7,7 @@ from sentinel_rl import NexusArchitect
 # V9 — ML Pipeline integration (XGBoost + Confluence)
 try:
     from sentinel_pipeline import SentinelPipeline, compute_confluence, CONFLUENCE_THRESHOLD
-    from sentinel_pipeline import normalize_imbalance_signal, normalize_trend_signal
+    from sentinel_pipeline import normalize_liquidity_signal, normalize_momentum_signal
     from sentinel_pipeline import normalize_volatility_signal, detect_market_regime, REGIME_PARAMS
     from sentinel_ml import build_features
     _V9_AVAILABLE = True
@@ -156,9 +156,10 @@ class SovereignGovernor:
         Falls back to reasonable defaults if data unavailable.
         """
         tick_data = {
-            "closes": [], "atr": 0.0, "atr_hist": [],
+            "closes": [], "opens": [], "highs": [], "lows": [],
+            "atr": 0.0, "atr_hist": [],
             "high": 0.0, "low": 0.0,
-            "imbalance": imbalance, "rsi": 50.0, "spread": 0.0,
+            "hour": datetime.now().hour,
         }
 
         candidates = []
@@ -178,22 +179,21 @@ class SovereignGovernor:
                         if tick.get('sym') == asset:
                             bid = float(tick.get('bid', 0.0))
                             ask = float(tick.get('ask', 0.0))
-                            spread = float(tick.get('spread', ask - bid if ask and bid else 0.0))
                             atr = float(tick.get('atr', 0.0))
-                            rsi = float(tick.get('rsi', 50.0))
 
-                            tick_data["spread"] = spread
                             tick_data["atr"] = atr
-                            tick_data["rsi"] = rsi
                             tick_data["high"] = float(tick.get('high', bid))
                             tick_data["low"] = float(tick.get('low', bid))
 
-                            # Synthesize closes/atr_hist if not available
+                            # Synthesize OHLC history if not available
                             if not tick_data["closes"]:
                                 price = bid if bid > 0 else ask
-                                tick_data["closes"] = [price] * 20
+                                tick_data["closes"] = [price] * 30
+                                tick_data["opens"] = [price] * 30
+                                tick_data["highs"] = [price + atr * 0.3] * 30
+                                tick_data["lows"] = [price - atr * 0.3] * 30
                             if not tick_data["atr_hist"]:
-                                tick_data["atr_hist"] = [atr] * 20
+                                tick_data["atr_hist"] = [atr] * 50
                             break
                 break
             except (json.JSONDecodeError, KeyError, TypeError, ValueError):
@@ -346,12 +346,13 @@ class SovereignGovernor:
                       f"(threshold={CONFLUENCE_THRESHOLD}) | Regime={v9_regime}")
 
                 # Override logic: V9 confluence > threshold → upgrade to EXECUTE
-                if v9_decision == "EXECUTE" and decision == "IGNORE":
+                if v9_decision in ("EXECUTE", "EXECUTE_CAUTIOUS") and decision == "IGNORE":
                     decision = tech_signal
-                    risk_lot_multiplier = 0.5
+                    risk_lot_multiplier = 0.5 if v9_decision == "EXECUTE" else 0.35
                     reason = (f"🧠 V9 ML OVERRIDE: Confluence={v9_confluence:.3f} "
                               f"(ML={v9_result.get('ml_prob', 0):.2f}) — "
-                              f"Regime={v9_regime}")
+                              f"Regime={v9_regime}"
+                              + (" [CAUTIOUS: low ATR]" if v9_decision == "EXECUTE_CAUTIOUS" else ""))
 
                 # V9 says IGNORE but base says EXECUTE → downgrade
                 elif v9_decision == "IGNORE" and decision != "IGNORE" and v9_confluence < 0.35:

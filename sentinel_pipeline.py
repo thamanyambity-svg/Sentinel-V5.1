@@ -46,10 +46,10 @@ logger = logging.getLogger("SENTINEL_PIPELINE")
 # ============================================================
 
 CONFLUENCE_WEIGHTS = {
-    "imbalance": 0.35,
-    "trend": 0.25,
+    "liquidity": 0.30,
+    "volatility": 0.25,
     "ml": 0.25,
-    "volatility": 0.15,
+    "momentum": 0.20,
 }
 
 CONFLUENCE_THRESHOLD = 0.55
@@ -60,7 +60,8 @@ def compute_confluence(signals: dict) -> float:
     Weighted confluence score ∈ [0, 1].
     Each signal component should be normalized to [0, 1] before calling.
 
-    signals keys: 'imbalance', 'trend', 'ml', 'volatility'
+    XAUUSD-optimized weights:
+      liquidity (30%) + volatility (25%) + ML (25%) + momentum (20%)
     """
     score = 0.0
     for key, weight in CONFLUENCE_WEIGHTS.items():
@@ -68,43 +69,68 @@ def compute_confluence(signals: dict) -> float:
     return round(score, 4)
 
 
-def normalize_imbalance_signal(imbalance: float, direction: str) -> float:
+def normalize_liquidity_signal(imbalance: float, wick_ratio: float,
+                               liquidity_grab: int, direction: str) -> float:
     """
-    Normalize imbalance to [0, 1] based on alignment with direction.
-    BUY: positive imbalance = good → higher score
-    SELL: negative imbalance = good → higher score
+    Normalize liquidity/imbalance signals to [0, 1] for XAUUSD.
+    Combines wick imbalance, wick ratio intensity, and grab detection.
     """
+    # Imbalance alignment: BUY favors positive, SELL favors negative
     if direction == "BUY":
-        return max(0.0, min(1.0, 0.5 + imbalance))
+        imb_score = max(0.0, min(1.0, 0.5 + imbalance * 0.5))
     else:
-        return max(0.0, min(1.0, 0.5 - imbalance))
+        imb_score = max(0.0, min(1.0, 0.5 - imbalance * 0.5))
+
+    # Wick ratio: higher = more rejection activity = stronger signal
+    wick_score = max(0.0, min(1.0, wick_ratio / 2.0))
+
+    # Liquidity grab: strong confirmation
+    grab_bonus = 0.15 if liquidity_grab else 0.0
+
+    return max(0.0, min(1.0, 0.5 * imb_score + 0.3 * wick_score + grab_bonus + 0.05))
 
 
-def normalize_trend_signal(rsi: float, direction: str) -> float:
+def normalize_volatility_signal(atr_ratio: float, range_ratio: float) -> float:
     """
-    Normalize trend alignment to [0, 1].
-    BUY: RSI > 50 is favorable
-    SELL: RSI < 50 is favorable
+    Normalize volatility regime to [0, 1] for XAUUSD.
+    Expansion phases (atr_ratio > 1.2) = exploitable.
+    Extreme compression or explosion = caution.
     """
-    if direction == "BUY":
-        return max(0.0, min(1.0, rsi / 100.0))
-    else:
-        return max(0.0, min(1.0, 1.0 - rsi / 100.0))
-
-
-def normalize_volatility_signal(atr_ratio: float) -> float:
-    """
-    Normalize volatility regime to [0, 1].
-    Normal volatility (ratio ~1.0) = high score.
-    Extreme volatility (ratio > 2.0) = low score (risky).
-    Very low volatility (ratio < 0.5) = medium score.
-    """
+    # ATR ratio sweet spot: 1.0-2.0 is favorable for XAUUSD
     if atr_ratio < 0.5:
-        return 0.5
-    elif atr_ratio > 2.0:
-        return max(0.0, 1.0 - (atr_ratio - 1.0) * 0.5)
+        atr_score = 0.3  # Too compressed — wait
+    elif atr_ratio > 3.0:
+        atr_score = 0.2  # Extreme vol — dangerous
+    elif atr_ratio > 1.2:
+        atr_score = min(1.0, 0.6 + (atr_ratio - 1.0) * 0.2)  # Expansion = good
     else:
-        return max(0.0, min(1.0, 1.0 - abs(atr_ratio - 1.0) * 0.3))
+        atr_score = max(0.3, min(0.7, 1.0 - abs(atr_ratio - 1.0) * 0.5))
+
+    # Range ratio confirms the current candle is impulsive
+    range_score = max(0.0, min(1.0, range_ratio / 2.0))
+
+    return 0.6 * atr_score + 0.4 * range_score
+
+
+def normalize_momentum_signal(ret_5: float, momentum_acc: float,
+                              break_high: int, break_low: int,
+                              direction: str) -> float:
+    """
+    Normalize momentum structure to [0, 1] for XAUUSD.
+    Combines return direction, acceleration, and structure breaks.
+    """
+    # Directional momentum alignment
+    if direction == "BUY":
+        mom_score = 0.5 + min(0.5, max(-0.5, ret_5 * 0.1))
+        break_bonus = 0.2 if break_high else 0.0
+    else:
+        mom_score = 0.5 - min(0.5, max(-0.5, ret_5 * 0.1))
+        break_bonus = 0.2 if break_low else 0.0
+
+    # Acceleration confirmation
+    acc_score = 0.5 + min(0.3, max(-0.3, momentum_acc * 0.05))
+
+    return max(0.0, min(1.0, 0.4 * mom_score + 0.3 * acc_score + break_bonus + 0.1))
 
 
 # ============================================================
@@ -146,7 +172,7 @@ class SentinelPipeline:
 
     def evaluate_signal(self, tick_data: dict, direction: str) -> dict:
         """
-        Full signal evaluation pipeline.
+        Full signal evaluation pipeline (XAUUSD-optimized).
 
         Args:
             tick_data: enriched tick/candle data dict
@@ -155,41 +181,55 @@ class SentinelPipeline:
         Returns:
             dict with 'confluence', 'ml_prob', 'regime', 'params', 'decision'
         """
-        # 1. Build features
+        # 1. Build XAUUSD-optimized features
         features = build_features(tick_data)
 
         # 2. ML prediction
         ml_prob = self.ml_model.predict_proba(features)
 
-        # 3. Normalize signals for confluence
-        imb_signal = normalize_imbalance_signal(
-            features["imbalance"], direction
+        # 3. Normalize signals for confluence (XAUUSD-optimized)
+        liquidity_signal = normalize_liquidity_signal(
+            features["imbalance"],
+            features["wick_ratio"],
+            features["liquidity_grab"],
+            direction,
         )
-        trend_signal = normalize_trend_signal(
-            features["rsi"], direction
+        vol_signal = normalize_volatility_signal(
+            features["atr_ratio"],
+            features["range_ratio"],
         )
-        vol_signal = normalize_volatility_signal(features["atr_ratio"])
+        momentum_signal = normalize_momentum_signal(
+            features["ret_5"],
+            features["momentum_acc"],
+            features["break_high"],
+            features["break_low"],
+            direction,
+        )
 
         # ML signal: predict_proba gives P(win) which is direction-agnostic
-        # (model is trained on win/loss outcomes for both BUY and SELL trades)
         ml_signal = ml_prob
 
         # 4. Compute confluence
         signals = {
-            "imbalance": imb_signal,
-            "trend": trend_signal,
-            "ml": ml_signal,
+            "liquidity": liquidity_signal,
             "volatility": vol_signal,
+            "ml": ml_signal,
+            "momentum": momentum_signal,
         }
         confluence = compute_confluence(signals)
 
         # 5. Detect regime and get adaptive params
-        trend_strength = (features["rsi"] - 50.0) / 50.0  # Proxy [-1, +1]
+        trend_strength = features.get("ret_5", 0.0) / (features.get("atr", 1.0) + 1e-9)
         regime = detect_market_regime(features["atr_ratio"], trend_strength)
         params = REGIME_PARAMS[regime]
 
-        # 6. Decision
-        decision = "EXECUTE" if confluence >= CONFLUENCE_THRESHOLD else "IGNORE"
+        # 6. Decision — XAUUSD filter: require atr_ratio > 1.2 for high-confidence trades
+        if confluence >= CONFLUENCE_THRESHOLD and features["atr_ratio"] > 1.2:
+            decision = "EXECUTE"
+        elif confluence >= CONFLUENCE_THRESHOLD:
+            decision = "EXECUTE_CAUTIOUS"
+        else:
+            decision = "IGNORE"
 
         result = {
             "direction": direction,
@@ -197,6 +237,20 @@ class SentinelPipeline:
             "threshold": CONFLUENCE_THRESHOLD,
             "ml_prob": round(ml_prob, 4),
             "signals": {k: round(v, 4) for k, v in signals.items()},
+            "features": {
+                "atr_ratio": round(features["atr_ratio"], 4),
+                "imbalance": round(features["imbalance"], 4),
+                "wick_ratio": round(features["wick_ratio"], 4),
+                "liquidity_grab": features["liquidity_grab"],
+                "vol_compression": round(features["vol_compression"], 4),
+                "break_high": features["break_high"],
+                "break_low": features["break_low"],
+                "session": {
+                    "london": features["london"],
+                    "newyork": features["newyork"],
+                    "asia": features["asia"],
+                },
+            },
             "regime": regime,
             "params": params,
             "decision": decision,
@@ -206,7 +260,7 @@ class SentinelPipeline:
         logger.info(
             f"[PIPELINE] {direction} | Confluence={confluence:.3f} "
             f"(threshold={CONFLUENCE_THRESHOLD}) | ML={ml_prob:.3f} | "
-            f"Regime={regime} | → {decision}"
+            f"ATR_Ratio={features['atr_ratio']:.2f} | Regime={regime} | → {decision}"
         )
 
         return result
@@ -224,23 +278,25 @@ class SentinelPipeline:
         return result
 
     def run_backtest_demo(self, n_bars: int = 500) -> dict:
-        """Run a demo backtest on synthetic data."""
-        logger.info(f"[PIPELINE] Running demo backtest ({n_bars} bars)...")
+        """Run a demo backtest on synthetic XAUUSD data."""
+        logger.info(f"[PIPELINE] Running XAUUSD demo backtest ({n_bars} bars)...")
 
         np.random.seed(42)
         price = 2000.0
         data = []
-        for _ in range(n_bars):
+        for i in range(n_bars):
             change = np.random.randn() * 2.0
             h = price + abs(np.random.randn() * 1.5)
             l = price - abs(np.random.randn() * 1.5)
             c = price + change
+            hour = i % 24  # simulate hourly bars
             data.append({
                 "open": price, "high": h, "low": l, "close": c,
                 "atr": 3.0 + np.random.randn() * 0.5,
                 "rsi": 50 + np.random.randn() * 15,
                 "spread": 0.5,
                 "imbalance": np.random.randn() * 0.3,
+                "hour": hour,
             })
             price = c
 
@@ -248,9 +304,12 @@ class SentinelPipeline:
             last = window[-1]
             rsi = last.get("rsi", 50)
             imb = last.get("imbalance", 0)
-            if rsi < 35 and imb > 0:
+            hour = last.get("hour", 12)
+            # XAUUSD: only trade during London/NY sessions
+            in_session = 8 <= hour <= 17
+            if in_session and rsi < 35 and imb > 0:
                 return {"action": "BUY"}
-            elif rsi > 65 and imb < 0:
+            elif in_session and rsi > 65 and imb < 0:
                 return {"action": "SELL"}
             return None
 
@@ -279,16 +338,21 @@ def main():
         print(f"\n[PIPELINE] Backtest result: {json.dumps(result, indent=2)}")
 
     elif "--predict" in sys.argv:
-        # Demo prediction
+        # Demo prediction with XAUUSD-optimized features
+        closes = [2000 + i * 0.5 for i in range(30)]
+        highs = [c + 1.5 for c in closes]
+        lows = [c - 1.2 for c in closes]
+        opens = [c - 0.3 for c in closes]
         tick_data = {
-            "closes": [2000 + i * 0.5 for i in range(20)],
+            "closes": closes,
+            "opens": opens,
+            "highs": highs,
+            "lows": lows,
             "atr": 3.0,
-            "atr_hist": [2.8, 3.0, 3.2, 2.9, 3.1] * 4,
-            "high": 2010.5,
-            "low": 2009.0,
-            "imbalance": 0.25,
-            "rsi": 42.0,
-            "spread": 0.5,
+            "atr_hist": [2.8, 3.0, 3.2, 2.9, 3.1] * 6,
+            "high": 2015.5,
+            "low": 2014.0,
+            "hour": 10,  # London session
         }
         result = pipeline.evaluate_signal(tick_data, "BUY")
         print(f"\n[PIPELINE] Signal evaluation: {json.dumps(result, indent=2)}")
