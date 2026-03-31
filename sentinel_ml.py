@@ -44,6 +44,8 @@ FEATURE_NAMES = [
     "london", "newyork", "asia",
     # Bloc 4 — Momentum Structure
     "ret_5", "ret_10", "momentum_acc", "break_high", "break_low",
+    # Bloc 5 — Orderflow (V9.1 Hedge Fund addition)
+    "delta", "absorption",
 ]
 
 
@@ -171,6 +173,65 @@ def _momentum_features(tick_data: dict) -> dict:
     }
 
 
+def _orderflow_features(tick_data: dict) -> dict:
+    """
+    Bloc 5 — Orderflow features (V9.1 Hedge Fund Addition)
+
+    Delta: Directional pressure from candle body vs wicks over window
+    Absorption: Smart money absorption pattern (large wicks + small body)
+    """
+    opens = tick_data.get("opens", [])
+    closes = tick_data.get("closes", [])
+    highs = tick_data.get("highs", [])
+    lows = tick_data.get("lows", [])
+
+    # Default values
+    delta = 0.0
+    absorption = 0
+
+    window = 20
+    n = min(window, len(opens), len(closes), len(highs), len(lows))
+
+    if n >= 2:
+        # === DELTA: Net buying vs selling pressure ===
+        delta_sum = 0.0
+        vol_sum = 0.0
+
+        for j in range(-n, 0):
+            direction = 1.0 if closes[j] > opens[j] else -1.0
+            body = abs(closes[j] - opens[j])
+            candle_range = highs[j] - lows[j] + 1e-9
+
+            # Weight = volume proxy (candle body size) × efficiency (body/range)
+            weight = body * (body / candle_range)
+
+            delta_sum += direction * weight
+            vol_sum += weight
+
+        delta = float(delta_sum / (vol_sum + 1e-9))
+
+        # === ABSORPTION: Detect smart money absorption ===
+        # Current candle: large wicks + small body = absorption
+        if len(closes) > 0 and len(opens) > 0:
+            curr_open = opens[-1]
+            curr_close = closes[-1]
+            curr_high = highs[-1] if highs else 0.0
+            curr_low = lows[-1] if lows else 0.0
+
+            curr_body = abs(curr_close - curr_open)
+            curr_range = curr_high - curr_low + 1e-9
+
+            # Absorption: body < 30% of range
+            if curr_range > 0 and (curr_body / curr_range) < 0.30:
+                absorption = 1
+
+    return {
+        "delta": float(delta),
+        "absorption": absorption,
+    }
+
+
+
 def build_features(tick_data: dict) -> dict:
     """
     Build XAUUSD-optimized feature vector from live tick/candle data.
@@ -192,6 +253,7 @@ def build_features(tick_data: dict) -> dict:
     features.update(_liquidity_features(tick_data))
     features.update(_session_features(tick_data))
     features.update(_momentum_features(tick_data))
+    features.update(_orderflow_features(tick_data))  # V9.1 Orderflow addition
     return features
 
 
@@ -382,6 +444,9 @@ def train_from_trade_history(history_path: str = "trade_history.json",
             "momentum_acc": t.get("momentum_acc", 0.0),
             "break_high": t.get("break_high", 0),
             "break_low": t.get("break_low", 0),
+            # Bloc 5 — Orderflow (V9.1)
+            "delta": t.get("delta", 0.0),
+            "absorption": t.get("absorption", 0),
         }
         X_list.append(features_to_array(feat))
         y_list.append(build_target(t))
