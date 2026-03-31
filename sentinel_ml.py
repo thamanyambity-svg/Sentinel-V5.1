@@ -36,6 +36,8 @@ MODEL_PATH = "sentinel_xgb_model.joblib"
 SCALER_PATH = "sentinel_scaler.joblib"
 
 FEATURE_NAMES = [
+    # Bloc 0 — Trend Confirmation (NIVEAU 1 addition - Critical filters)
+    "ema_20", "ema_50", "ema_slope", "rsi", "macd_histogram",
     # Bloc 1 — Volatility
     "atr", "atr_ratio", "range_ratio", "vol_compression",
     # Bloc 2 — Liquidity / Imbalance
@@ -47,6 +49,100 @@ FEATURE_NAMES = [
     # Bloc 5 — Orderflow (V9.1 Hedge Fund addition)
     "delta", "absorption",
 ]
+
+
+def _ema(series: list, period: int) -> float:
+    """Calculate Exponential Moving Average."""
+    if len(series) < period:
+        return series[-1] if series else 0.0
+
+    multiplier = 2.0 / (period + 1)
+    ema = float(np.mean(series[-period:]))
+
+    for price in series[-period:]:
+        ema = price * multiplier + ema * (1 - multiplier)
+
+    return float(ema)
+
+
+def _rsi(series: list, period: int = 14) -> float:
+    """Calculate Relative Strength Index."""
+    if len(series) < period + 1:
+        return 50.0
+
+    deltas = np.diff(series[-period-1:])
+    seed = deltas[:period]
+    up = seed[seed >= 0].sum() / period
+    down = -seed[seed < 0].sum() / period
+
+    rs = up / (down + 1e-9)
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+
+    return float(rsi)
+
+
+def _macd(series: list) -> float:
+    """Calculate MACD histogram (difference between 12 and 26 EMA)."""
+    if len(series) < 26:
+        return 0.0
+
+    ema12 = _ema(series, 12)
+    ema26 = _ema(series, 26)
+    macd_line = ema12 - ema26
+
+    # Signal line (9-period EMA of MACD)
+    # For simplicity, approximate with recent MACD values
+    signal = _ema([ema12 - ema26], 9) if len(series) >= 35 else macd_line
+
+    return float(macd_line - signal)
+
+
+def _trend_confirmation_features(tick_data: dict) -> dict:
+    """
+    Bloc 0 — Trend Confirmation (NIVEAU 1 - Critical for filtering false breaks)
+
+    Features:
+      - ema_20: Short-term trend (entry confirmation)
+      - ema_50: Medium-term trend
+      - ema_slope: Trend strength (avoid dying trends)
+      - rsi: Momentum extremes (overbought/oversold)
+      - macd_histogram: Momentum acceleration
+    """
+    closes = tick_data.get("closes", [])
+
+    if len(closes) < 26:
+        return {
+            "ema_20": 0.0,
+            "ema_50": 0.0,
+            "ema_slope": 0.0,
+            "rsi": 50.0,
+            "macd_histogram": 0.0,
+        }
+
+    # EMA calculations
+    ema_20 = _ema(closes, 20)
+    ema_50 = _ema(closes, 50)
+
+    # EMA slope (trend strength): (EMA20_now - EMA20_10bars_ago) / EMA20
+    ema_20_history = [_ema(closes[:max(1, i-19)], 20) for i in range(10, len(closes))]
+    if len(ema_20_history) >= 2:
+        ema_slope = (ema_20 - ema_20_history[-10]) / (abs(ema_20) + 1e-9) if ema_20 != 0 else 0.0
+    else:
+        ema_slope = 0.0
+
+    # RSI (momentum extremes)
+    rsi = _rsi(closes, 14)
+
+    # MACD histogram
+    macd_hist = _macd(closes)
+
+    return {
+        "ema_20": float(ema_20),
+        "ema_50": float(ema_50),
+        "ema_slope": float(ema_slope),
+        "rsi": float(rsi),
+        "macd_histogram": float(macd_hist),
+    }
 
 
 def _volatility_features(tick_data: dict) -> dict:
@@ -249,6 +345,7 @@ def build_features(tick_data: dict) -> dict:
         timestamp : ISO timestamp string (fallback for hour)
     """
     features = {}
+    features.update(_trend_confirmation_features(tick_data))  # Bloc 0 — NIVEAU 1 Critical filters
     features.update(_volatility_features(tick_data))
     features.update(_liquidity_features(tick_data))
     features.update(_session_features(tick_data))
@@ -425,6 +522,12 @@ def train_from_trade_history(history_path: str = "trade_history.json",
     y_list = []
     for t in closed:
         feat = {
+            # Bloc 0 — Trend Confirmation (NIVEAU 1 addition)
+            "ema_20": t.get("ema_20", 0.0),
+            "ema_50": t.get("ema_50", 0.0),
+            "ema_slope": t.get("ema_slope", 0.0),
+            "rsi": t.get("rsi", 50.0),
+            "macd_histogram": t.get("macd_histogram", 0.0),
             # Bloc 1 — Volatility
             "atr": t.get("atr", 0.0),
             "atr_ratio": t.get("atr_ratio", 1.0),
