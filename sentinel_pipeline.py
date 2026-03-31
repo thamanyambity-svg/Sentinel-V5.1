@@ -55,6 +55,166 @@ CONFLUENCE_WEIGHTS = {
 CONFLUENCE_THRESHOLD = 0.55
 
 
+# ============================================================
+# §4 — NIVEAU 4 KILL SWITCHES (Risk Management)
+# ============================================================
+
+class KillSwitchEngine:
+    """
+    XAUUSD-optimized kill switches for system survival.
+    Monitors account health, loss streaks, volatility spikes.
+    """
+
+    def __init__(self):
+        self.max_consecutive_losses = 5
+        self.max_drawdown_pct = 10.0  # Stop if > 10% drawdown
+        self.max_spread_threshold = 100  # Points (XAUUSD)
+        self.volatility_multiplier = 2.0  # Alert if ATR > 2x baseline
+        self.critical_spread_pct = 150  # Skip entries if spread > 150% of average
+
+    def check_losses_streak(self, trade_history_path: str = "trade_history.json") -> dict:
+        """
+        Detect 5+ consecutive losses.
+        Returns: {"triggered": bool, "consecutive_losses": int}
+        """
+        try:
+            with open(trade_history_path) as f:
+                trades = json.load(f)
+
+            if not isinstance(trades, list) or len(trades) == 0:
+                return {"triggered": False, "consecutive_losses": 0, "reason": "No trades"}
+
+            # Count consecutive losses from end
+            loss_streak = 0
+            for trade in reversed(trades):
+                if trade.get("closed", False):
+                    if trade.get("pnl", 0) <= 0:
+                        loss_streak += 1
+                    else:
+                        break
+
+            triggered = bool(loss_streak >= self.max_consecutive_losses)
+            return {
+                "triggered": triggered,
+                "consecutive_losses": int(loss_streak),
+                "threshold": self.max_consecutive_losses,
+                "action": "STOP_TRADING" if triggered else "OK"
+            }
+        except Exception as e:
+            return {"triggered": False, "error": str(e)}
+
+    def check_drawdown(self, status_path: str = "status.json",
+                       starting_balance: float = 1000.0) -> dict:
+        """
+        Monitor account drawdown.
+        Returns: {"triggered": bool, "drawdown_pct": float}
+        """
+        try:
+            with open(status_path) as f:
+                status = json.load(f)
+
+            current_equity = status.get("equity", starting_balance)
+            peak_balance = starting_balance
+
+            # If we have enough equity, use it as peak reference
+            if current_equity > peak_balance:
+                peak_balance = current_equity
+
+            drawdown_pct = ((peak_balance - current_equity) / peak_balance) * 100
+            triggered = bool(drawdown_pct > self.max_drawdown_pct)
+
+            return {
+                "triggered": triggered,
+                "current_equity": float(current_equity),
+                "peak_balance": float(peak_balance),
+                "drawdown_pct": round(float(drawdown_pct), 2),
+                "threshold": self.max_drawdown_pct,
+                "action": "REDUCE_SIZE" if triggered else "OK"
+            }
+        except Exception as e:
+            return {"triggered": False, "error": str(e)}
+
+    def check_spread_spike(self, tick_data: dict) -> dict:
+        """
+        Detect abnormal spread expansion.
+        Returns: {"triggered": bool, "current_spread": float, "avg_spread": float}
+        """
+        current_spread = tick_data.get("spread", 0)
+        spread_history = tick_data.get("spread_hist", [])
+
+        if not spread_history or len(spread_history) < 5:
+            return {"triggered": False, "reason": "Insufficient history"}
+
+        avg_spread = np.mean(spread_history[-20:])
+        spread_ratio = (current_spread / (avg_spread + 1e-9)) * 100
+
+        triggered = bool(current_spread > self.max_spread_threshold or \
+                   spread_ratio > self.critical_spread_pct)
+
+        return {
+            "triggered": triggered,
+            "current_spread": float(current_spread),
+            "avg_spread": round(float(avg_spread), 2),
+            "spread_ratio_pct": round(float(spread_ratio), 1),
+            "threshold": self.max_spread_threshold,
+            "action": "SKIP_ENTRY" if triggered else "OK"
+        }
+
+    def check_volatility_spike(self, tick_data: dict) -> dict:
+        """
+        Detect extreme volatility (ATR spike).
+        Returns: {"triggered": bool, "atr": float, "atr_avg": float}
+        """
+        current_atr = tick_data.get("atr", 0)
+        atr_history = tick_data.get("atr_hist", [])
+
+        if not atr_history or len(atr_history) < 10:
+            return {"triggered": False, "reason": "Insufficient ATR history"}
+
+        atr_avg = np.mean(atr_history[-50:])
+        atr_ratio = current_atr / (atr_avg + 1e-9)
+
+        triggered = bool(atr_ratio > self.volatility_multiplier)
+
+        return {
+            "triggered": triggered,
+            "current_atr": round(float(current_atr), 4),
+            "avg_atr": round(float(atr_avg), 4),
+            "atr_ratio": round(float(atr_ratio), 2),
+            "threshold": self.volatility_multiplier,
+            "action": "REDUCE_SIZE" if triggered else "OK"
+        }
+
+    def evaluate_all(self, tick_data: dict,
+                     trade_history_path: str = "trade_history.json",
+                     status_path: str = "status.json") -> dict:
+        """
+        Run all kill switches and return overall status.
+        Returns: {"all_ok": bool, "triggers": list, "actions": list}
+        """
+        checks = {
+            "loss_streak": self.check_losses_streak(trade_history_path),
+            "drawdown": self.check_drawdown(status_path),
+            "spread_spike": self.check_spread_spike(tick_data),
+            "volatility_spike": self.check_volatility_spike(tick_data),
+        }
+
+        triggered_switches = [name for name, check in checks.items()
+                             if check.get("triggered", False)]
+        actions = [check.get("action", "OK") for check in checks.values()]
+
+        all_ok = bool(len(triggered_switches) == 0)
+
+        return {
+            "all_ok": all_ok,
+            "checks": checks,
+            "triggered_switches": triggered_switches,
+            "actions": list(set(actions)),  # Unique actions
+            "timestamp": datetime.now().isoformat(),
+        }
+
+
+
 def compute_confluence(signals: dict) -> float:
     """
     Weighted confluence score ∈ [0, 1].
@@ -163,12 +323,13 @@ REGIME_PARAMS = {
 
 class SentinelPipeline:
     """
-    Complete V9 quant pipeline: data → features → ML → confluence → execution.
+    Complete V9 quant pipeline: data → features → ML → confluence → kill_switches → execution.
     """
 
     def __init__(self):
         self.ml_model = SentinelMLModel()
-        logger.info("[PIPELINE] V9 Sentinel Pipeline initialized")
+        self.kill_switches = KillSwitchEngine()
+        logger.info("[PIPELINE] V9 Sentinel Pipeline initialized (with kill switches)")
 
     def evaluate_signal(self, tick_data: dict, direction: str) -> dict:
         """
@@ -223,13 +384,24 @@ class SentinelPipeline:
         regime = detect_market_regime(features["atr_ratio"], trend_strength)
         params = REGIME_PARAMS[regime]
 
+        # 5.5. CHECK KILL SWITCHES (NIVEAU 4 — SURVIVAL CRITICAL)
+        kill_switch_status = self.kill_switches.evaluate_all(tick_data)
+        kill_switches_triggered = kill_switch_status["triggered_switches"]
+
         # 6. Decision — XAUUSD filter: require atr_ratio > 1.2 for high-confidence trades
-        if confluence >= CONFLUENCE_THRESHOLD and features["atr_ratio"] > 1.2:
+        # BUT OVERRIDE if kill switches triggered
+        if kill_switches_triggered:
+            decision = "BLOCKED_KILL_SWITCH"
+            reason = f"Kill switches: {', '.join(kill_switches_triggered)}"
+        elif confluence >= CONFLUENCE_THRESHOLD and features["atr_ratio"] > 1.2:
             decision = "EXECUTE"
+            reason = "High confluence + volatility confirmed"
         elif confluence >= CONFLUENCE_THRESHOLD:
             decision = "EXECUTE_CAUTIOUS"
+            reason = "Confluence OK, but low volatility"
         else:
             decision = "IGNORE"
+            reason = "Insufficient confluence"
 
         result = {
             "direction": direction,
@@ -253,6 +425,7 @@ class SentinelPipeline:
             },
             "regime": regime,
             "params": params,
+            "kill_switches": kill_switch_status,  # NIVEAU 4 — Risk monitoring
             "decision": decision,
             "timestamp": datetime.now().isoformat(),
         }
@@ -260,7 +433,8 @@ class SentinelPipeline:
         logger.info(
             f"[PIPELINE] {direction} | Confluence={confluence:.3f} "
             f"(threshold={CONFLUENCE_THRESHOLD}) | ML={ml_prob:.3f} | "
-            f"ATR_Ratio={features['atr_ratio']:.2f} | Regime={regime} | → {decision}"
+            f"ATR_Ratio={features['atr_ratio']:.2f} | Regime={regime} | "
+            f"KillSwitches={kill_switches_triggered if kill_switches_triggered else 'OK'} | → {decision}"
         )
 
         return result
