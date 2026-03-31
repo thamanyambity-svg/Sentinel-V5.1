@@ -101,9 +101,10 @@ def _liquidity_features(tick_data: dict) -> dict:
     wick_ratio = (sell_score + buy_score) / max(n, 1)
 
     # Liquidity grab detection: current high breaks recent swing high
+    # Compare current bar high against the max of the previous n candles
     liquidity_grab = 0
-    if len(highs) > window and high > 0:
-        recent_high = max(highs[-window - 1:-1]) if len(highs) > window else 0
+    if n >= 2 and high > 0:
+        recent_high = max(highs[-n:-1])
         if recent_high > 0 and high > recent_high:
             liquidity_grab = 1
 
