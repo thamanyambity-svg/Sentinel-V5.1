@@ -28,6 +28,9 @@ venv/
 .env.development.local
 .env.test.local
 .env.production.local
+*.env.bak
+.env_backup
+test_discord_manual_v2.py
 
 # Bot Data
 ticks.json

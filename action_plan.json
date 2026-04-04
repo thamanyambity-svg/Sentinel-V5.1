@@ -1,10 +1,16 @@
 {
-    "timestamp": "2026-02-25T11:57:17.748104",
-    "asset": "ETHUSD",
+    "timestamp": "2026-04-01T20:09:17.792967",
+    "asset": "XAUUSD",
     "spm_score": 0.464,
-    "nexus_prob": 4.551430174615234e-05,
-    "z_score": 1.232,
-    "decision": "IGNORE",
-    "kelly_risk": 0.0,
-    "reasoning": "\ud83d\udea8 KILL SWITCH NEXUS ACTIV\u00c9 (Pr\u00e9cision d\u00e9grad\u00e9e)."
+    "nexus_prob": 0.515584409236908,
+    "z_score": 0.536,
+    "decision": "BUY",
+    "kelly_risk": 0.75,
+    "lot_multiplier": 0.75,
+    "reasoning": "\ud83d\ude80 CONFLUENCE PRO : Technique et Sentiment (BULLISH (CONFLUENCE)) align\u00e9s. Trade de tendance valid\u00e9.",
+    "fakeout_detected": false,
+    "imbalance": 0.0,
+    "v9_confluence": 0.33,
+    "v9_ml_prob": 0.0,
+    "v9_regime": "RANGE"
 }

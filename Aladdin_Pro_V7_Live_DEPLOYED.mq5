@@ -697,7 +697,9 @@ void ApplyPreNewsSecure() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        // V7.20: Protect ALL positions during news (EA + manual)
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue; // skip other EAs only
         if(IsBEDone(ticket)) continue;
 
         string sym   = PositionGetString(POSITION_SYMBOL);
@@ -1122,12 +1124,22 @@ void CheckDailyReset_V7() {
 }
 
 void EvaluateRulesEngine() {
-    double eq    = AccountInfoDouble(ACCOUNT_EQUITY);
     // V7.20 FIX: Guard against division by zero when account not yet synced
     if(dailyStartBalance <= 0.0) {
         dailyStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
         if(dailyStartBalance <= 0.0) return; // Skip rules until account syncs
     }
+    // V7.20: Calculate P&L only for EA positions (magic=707070)
+    // Manual trades (magic=0) must NOT block the EA — we are a team
+    double eaPnL = 0.0;
+    for(int p = PositionsTotal()-1; p >= 0; p--) {
+        ulong tk = PositionGetTicket(p);
+        if(tk > 0 && PositionSelectByTicket(tk)) {
+            if(PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+                eaPnL += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+        }
+    }
+    double eq    = dailyStartBalance + eaPnL;
     double dLoss = ((dailyStartBalance - eq) / dailyStartBalance) * 100.0;
     double dGain = ((eq - dailyStartBalance) / dailyStartBalance) * 100.0;
 
@@ -1382,7 +1394,9 @@ void ApplyTrailingStop_V7() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        // V7.20: Trail ALL positions (EA + manual) — we are a team
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue; // skip other EAs only
 
         string sym   = PositionGetString(POSITION_SYMBOL);
         int    ptype = (int)PositionGetInteger(POSITION_TYPE);

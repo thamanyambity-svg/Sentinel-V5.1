@@ -2,6 +2,10 @@ import json
 import os
 import math
 from datetime import datetime
+
+# Fix macOS fork() segfault with PyTorch/numpy
+os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
+
 from sentinel_rl import NexusArchitect
 
 # V9 — ML Pipeline integration (XGBoost + Confluence)
@@ -67,7 +71,7 @@ class SovereignGovernor:
                 if len(closed) < 5:
                     continue
                 closed = sorted(closed, key=lambda t: t.get('entry_time', 0))[-n:]
-                pnls = [t.get('profit', 0.0) for t in closed]
+                pnls = [t.get('profit', t.get('pnl', 0.0)) for t in closed]
                 wins   = [p for p in pnls if p > 0]
                 losses = [abs(p) for p in pnls if p < 0]
                 if not wins or not losses:

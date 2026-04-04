@@ -99,8 +99,9 @@ class NexusArchitect:
             if imbalance_val != 0.0:
                 real_imbalance_count += 1
             inputs.append([[t_input, t['finbert_score'], imbalance_val]])
-            targets.append([1.0 if t['profit'] > 0 else 0.0])
-            self.accuracy_history.append(1.0 if t['profit'] > 0 else 0.0)
+            pnl = t.get('profit', t.get('pnl', 0))
+            targets.append([1.0 if pnl > 0 else 0.0])
+            self.accuracy_history.append(1.0 if pnl > 0 else 0.0)
 
         X = torch.FloatTensor(inputs)
         y = torch.FloatTensor(targets)

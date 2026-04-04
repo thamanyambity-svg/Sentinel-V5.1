@@ -1,0 +1,17 @@
+{
+  "SENTINEL_HOST": "127.0.0.1",
+  "SENTINEL_PORT": 5555,
+  "SENTINEL_API_KEY": "REMPLACER_PAR_UNE_CLE_SECRETE",
+  "MT5_FILES_PATH": "/Users/macbookpro/Library/Application Support/net.metaquotes.wine.metatrader5/drive_c/Program Files/MetaTrader 5/MQL5/Files",
+  "BRIDGE_POLL_INTERVAL_SEC": 1.0,
+  "BRIDGE_REQUEST_TIMEOUT_SEC": 30,
+  "BRIDGE_MAX_RETRIES": 3,
+  "NEWS_BLOCK_BEFORE_MIN": 30,
+  "NEWS_BLOCK_AFTER_MIN": 60,
+  "ML_MIN_CONFIDENCE": 0.62,
+  "RETRAIN_INTERVAL_DAYS": 7,
+  "OPT_IS_PCT": 0.7,
+  "OPT_OOS_PF_CAP": 20.0,
+  "OPT_MIN_OOS_TRADES": 10,
+  "LOG_LEVEL": "INFO"
+}

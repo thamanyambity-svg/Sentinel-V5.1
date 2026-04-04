@@ -84,4 +84,4 @@ def feedback(result: TradeResult):
         raise HTTPException(status_code=500, detail="Apex Autopsy Failure")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5555, log_level="error")
+    uvicorn.run(app, host="127.0.0.1", port=5555, log_level="error")

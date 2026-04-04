@@ -384,9 +384,6 @@ int OnInit() {
 
     trackedCount      = 0;
     dailyStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-    // V7.20 FIX: Si le terminal n'a pas encore synchro le compte, on retry dans OnTimer
-    if(dailyStartBalance <= 0.0)
-        Log.Warn("INIT", "Balance=0 au demarrage — attente sync compte...");
     EventSetTimer(TimerSeconds);
     trade.SetExpertMagicNumber(MagicNumber);
     trade.SetTypeFilling(ORDER_FILLING_IOC);
@@ -446,12 +443,6 @@ void OnTimer() {
     ExportStatus_V7();
     DiagnoseBBFilter();
 
-    // ── V7.20 FIX : Mise à jour indicateurs pour TOUS les symboles ──
-    // Avant l'export ticks, sinon RSI/ADX/ATR restent à 0 quand
-    // les filtres horaires bloquent le trading
-    for(int u = 0; u < symbolCount; u++)
-        UpdateIndicators(u);
-
     if(TimeCurrent() - lastTickExport >= 1) {
         ExportTickData_V7();
         string st_syms[];
@@ -501,9 +492,7 @@ void OnTimer() {
             }
         }
 
-        // Indicateurs déjà mis à jour en haut de OnTimer()
-        // Vérifier quand même que les données sont valides
-        if(symbols[i].lastATR == 0.0) continue;
+        if(!UpdateIndicators(i)) continue;
 
         // ── V7.14 : ADX minimum spécifique XAUUSD ──
         if(symbols[i].instrType == 0 && symbols[i].lastADX < Gold_ADX_Min) {
@@ -1123,11 +1112,6 @@ void CheckDailyReset_V7() {
 
 void EvaluateRulesEngine() {
     double eq    = AccountInfoDouble(ACCOUNT_EQUITY);
-    // V7.20 FIX: Guard against division by zero when account not yet synced
-    if(dailyStartBalance <= 0.0) {
-        dailyStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-        if(dailyStartBalance <= 0.0) return; // Skip rules until account syncs
-    }
     double dLoss = ((dailyStartBalance - eq) / dailyStartBalance) * 100.0;
     double dGain = ((eq - dailyStartBalance) / dailyStartBalance) * 100.0;
 
@@ -1601,8 +1585,6 @@ void ExportStatus_V7() {
                ",\"equity\":"   + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),  2) +
                ",\"trading\":"  + (tradingEnabled ? "true" : "false") +
                ",\"trades_today\":" + (string)dailyTradeCount +
-               ",\"account\":"  + (string)AccountInfoInteger(ACCOUNT_LOGIN) +
-               ",\"server\":\"" + AccountInfoString(ACCOUNT_SERVER) + "\"" +
                ",\"ts\":"       + (string)((long)TimeCurrent()) +
                ",\"positions\":[";
     int count = 0;

@@ -1,0 +1,1 @@
+No data found for the last 24 hours.

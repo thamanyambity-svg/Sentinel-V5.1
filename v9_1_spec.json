@@ -1,0 +1,48 @@
+{
+  "version": "V9.1",
+  "symbol": "XAUUSD",
+  "features": 17,
+  "blocks": {
+    "volatility": [
+      "atr",
+      "atr_ratio",
+      "range_ratio",
+      "vol_compression"
+    ],
+    "liquidity": [
+      "imbalance",
+      "wick_ratio",
+      "liquidity_grab"
+    ],
+    "session": [
+      "london",
+      "newyork",
+      "asia"
+    ],
+    "momentum": [
+      "ret_5",
+      "ret_10",
+      "momentum_acc",
+      "break_high",
+      "break_low"
+    ],
+    "orderflow": [
+      "delta",
+      "absorption"
+    ]
+  },
+  "confluence": {
+    "weights": {
+      "liquidity": 0.3,
+      "volatility": 0.25,
+      "ml": 0.25,
+      "momentum": 0.2
+    },
+    "threshold": 0.55
+  },
+  "training": {
+    "samples": 35,
+    "accuracy": 1.0,
+    "backtest_sharpe": 0.0851
+  }
+}
