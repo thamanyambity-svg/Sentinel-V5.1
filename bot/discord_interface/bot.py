@@ -49,13 +49,70 @@ class StakeSelect(discord.ui.Select):
         await interaction.response.defer()
 
 class TradeView(View):
-    def __init__(self, broker, signal, asset, stake):
+    def __init__(self, bot, broker, signal, asset, stake):
         super().__init__(timeout=None)
+        self.bot = bot
         self.broker = broker
         self.signal = signal
         self.asset = asset
         self.stake = str(stake).replace("$", "")
         self.add_item(StakeSelect(self.stake))
+
+    async def _get_current_balance(self):
+        client = getattr(self.bot, "deriv_client", None)
+        if not client:
+            return 0.0
+
+        try:
+            balance_data = await client.get_balance()
+            if isinstance(balance_data, dict):
+                return float(balance_data.get("balance", 0.0) or 0.0)
+        except Exception as e:
+            logger.warning(f"⚠️ Discord manual balance fetch failed: {e}")
+
+        return 0.0
+
+    async def _apply_manual_security(self):
+        self.signal.setdefault("type", "MEAN_REVERSION")
+        self.signal.setdefault("indicators", {"rsi": 50})
+
+        requested_amount = float(self.stake)
+        balance = await self._get_current_balance()
+
+        sl_dist = self.signal.get("risk_plan", {}).get("sl_dist")
+        if not sl_dist:
+            atr_value = float(self.signal.get("atr", 0.0) or 0.0)
+            sl_dist = (atr_value * 2.0) if atr_value > 0.0 else 50.0
+
+        atr_for_governance = float(self.signal.get("atr", 0.0) or (sl_dist / 2.0))
+
+        manager = getattr(self.bot, "manager", None)
+        if manager:
+            context = {
+                "asset": self.signal.get("asset", self.asset),
+                "price": float(self.signal.get("current_price", 0.0) or 0.0),
+                "indicators": self.signal.get("indicators", {"rsi": 50}),
+                "balance": balance,
+                "atr": atr_for_governance,
+            }
+            approved, reason = await manager.validate_signal(
+                self.signal,
+                [],
+                {"global_drawdown": 0.0, "losing_streak": 0},
+                context,
+            )
+            if not approved:
+                raise RuntimeError(f"Signal bloqué par gouvernance: {reason}")
+
+        risk_manager = getattr(self.bot, "risk_manager", None)
+        if risk_manager and balance > 0.0:
+            safe_amount = risk_manager.calculate_lot_size(balance, float(sl_dist), self.signal.get("asset", self.asset))
+            if safe_amount > 0.0:
+                requested_amount = min(requested_amount, safe_amount)
+
+        self.signal["amount"] = round(requested_amount, 2)
+        self.signal["stake"] = self.signal["amount"]
+        self.signal["risk_plan"] = {**self.signal.get("risk_plan", {}), "sl_dist": float(sl_dist)}
 
     @discord.ui.button(label="✅ VALIDER", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: Button):
@@ -71,7 +128,7 @@ class TradeView(View):
             signal_time = self.signal.get("generated_at", execution_time)
             latency = execution_time - signal_time
             
-            self.signal["amount"] = float(self.stake)
+            await self._apply_manual_security()
             self.signal["human_delay"] = latency # Inject for Collector
             
             logger.info(f"🧬 [METRICS] Human Validation Delay: {latency:.2f}s")
@@ -79,10 +136,10 @@ class TradeView(View):
             result = await self.broker.execute(self.signal)
             embed = interaction.message.embeds[0]
             embed.color = 0x00ff00
-            embed.add_field(name="STATUT", value=f"🚀 **ORDRE LANCÉ ({self.stake}$)**", inline=False)
+            embed.add_field(name="STATUT", value=f"🚀 **ORDRE LANCÉ ({self.signal['amount']}$)**", inline=False)
             embed.add_field(name="⏱️ Réflexe Humain", value=f"`{latency:.2f}s`", inline=True)
             
-            await interaction.followup.send(f"✅ Ordre de {self.stake}$ exécuté sur {self.asset} ! (Délai: {latency:.1f}s)")
+            await interaction.followup.send(f"✅ Ordre de {self.signal['amount']}$ exécuté sur {self.asset} ! (Délai: {latency:.1f}s)")
         except Exception as e:
             await interaction.followup.send(f"❌ Erreur : {e}")
 
@@ -255,7 +312,7 @@ class TradingBot(commands.Bot):
         embed.add_field(name="📈 Proba", value=f"`{data.get('probability')}`", inline=True)
         embed.add_field(name="📊 Score", value=f"`{data['score']}/100`", inline=True)
         embed.set_footer(text="Sentinelle Alpha V1.0")
-        view = TradeView(broker, signal, data['asset'], data.get("stake_advice", "$10"))
+        view = TradeView(self, broker, signal, data['asset'], data.get("stake_advice", "$10"))
         await channel.send(embed=embed, view=view)
 
     async def send_signal_embed(self, data):

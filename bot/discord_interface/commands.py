@@ -58,17 +58,29 @@ async def balance_command(bot):
         cur = data.get("currency", "USD")
         acc_id = data.get("id") or data.get("loginid") or "N/A"
         
-        # MT5 Balance
+        # MT5 Balance + Account
         from bot.bridge.mt5_interface import MT5Bridge
         bridge = MT5Bridge()
         raw_status = bridge.get_raw_status()
         mt5_bal = raw_status.get("balance", "N/A")
+        mt5_account = raw_status.get("account", os.getenv("MT5_LOGIN", "N/A"))
+        mt5_server = raw_status.get("server", os.getenv("MT5_SERVER", "N/A"))
         if isinstance(mt5_bal, float): mt5_bal = f"{mt5_bal:.2f} USD"
+        
+        # Détection broker
+        srv = str(mt5_server).lower()
+        if 'xm' in srv:
+            broker_name = 'XM Global'
+        elif 'deriv' in srv:
+            broker_name = 'Deriv'
+        else:
+            broker_name = mt5_server
         
         return (
             f"💰 **SOLDE MULTI-AVATAR**\n"
             f"💳 **Options (VRTC)** : `{bal} {cur}`\n"
-            f"📉 **MT5 (Sentinel)** : `{mt5_bal}`\n"
+            f"📉 **MT5 ({broker_name})** : `{mt5_bal}`\n"
+            f"🆔 Compte MT5 : `{mt5_account}` @ `{mt5_server}`\n"
             f"🆔 Compte Maître : `{acc_id}`"
         )
     except Exception as e:

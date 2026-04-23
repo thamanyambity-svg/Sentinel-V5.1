@@ -109,10 +109,18 @@ class MarketIntelligence:
                 if prev > 0:
                     change_pct = ((price - prev) / prev) * 100
             
-            # Volatility indices: seuils très bas (0.005% / 0.05%); Forex/stocks: 0.2% / 1%
+            # Seuils adaptés par instrument:
+            # GOLD: très réactif (0.01% / 0.1%) car mouvements rapides
+            # Volatility indices: ultra-sensible (0.005% / 0.05%)
+            # Forex/stocks: standard (0.2% / 1%)
             is_vol = "Volatility" in symbol or ("Index" in symbol and "Volatility" in str(symbol))
-            th_weak = 0.005 if is_vol else 0.2
-            th_strong = 0.05 if is_vol else 1.0
+            is_gold = symbol in ("GOLD", "XAUUSD")
+            if is_vol:
+                th_weak, th_strong = 0.005, 0.05
+            elif is_gold:
+                th_weak, th_strong = 0.01, 0.1
+            else:
+                th_weak, th_strong = 0.2, 1.0
             trend = "RANGE"
             if change_pct > th_strong: trend = "STRONG_UP"
             elif change_pct > th_weak: trend = "WEAK_UP"

@@ -68,9 +68,23 @@ class MassiveFetcher:
         logger.info(f"✅ Saved {count} new candles for {asset_name} to {self.db_path}")
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--daemon", action="store_true", help="Run in a loop")
+    args = parser.parse_args()
+
     fetcher = MassiveFetcher()
-    # Fetch EURUSD and GOLD (Gold is often X:XAUUSD or similar depending on entitlement)
-    fetcher.fetch_history("C:EURUSD", days=365) # 1 Year history
-    fetcher.fetch_history("NVDA", days=365)
-    fetcher.fetch_history("TSLA", days=365)
-    logger.info("🎉 Historical data acquisition complete.")
+    
+    while True:
+        # Focus exclusif sur l'OR (XAUUSD)
+        fetcher.fetch_history("C:XAUUSD", days=365)
+        logger.info("🎉 Historical data acquisition (GOLD ONLY) complete.")
+
+        
+        if not args.daemon:
+            break
+            
+        logger.info("⏳ Mode Daemon: Prochaine mise à jour dans 24 heures...")
+        import time
+        time.sleep(24 * 3600)
+

@@ -5,7 +5,7 @@ Configuration globale du bot
 # ───────────────────────────
 # MODE
 # ───────────────────────────
-MODE = "PAPER"   # PAPER | REAL
+MODE = "DEMO"   # PAPER | REAL | DEMO
 
 # ───────────────────────────
 # BROKER

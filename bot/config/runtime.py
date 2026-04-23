@@ -4,7 +4,7 @@ H24.1
 """
 
 # Broker actif : "paper" ou "deriv"
-ACTIVE_BROKER = "paper"
+ACTIVE_BROKER = "deriv"
 
 
 def get_active_broker():

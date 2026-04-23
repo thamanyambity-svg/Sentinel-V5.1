@@ -125,6 +125,8 @@ class MT5DataClient:
     SYMBOL_ALIASES = {
         "Volatility 100 Index": ["Volatility 100 Index", "R_100", "Volatility 100 (1s) Index", "1HZ100V"],
         "Volatility 75 Index": ["Volatility 75 Index", "R_75", "Volatility 75 (1s) Index", "1HZ75V"],
+        "GOLD": ["GOLD", "XAUUSD", "XAUUSDm", "XAUUSD.a"],
+        "XAUUSD": ["XAUUSD", "GOLD", "XAUUSDm", "XAUUSD.a"],
     }
 
     def _map_to_mt5(self, symbol: str) -> str:

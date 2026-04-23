@@ -463,6 +463,8 @@ async def trading_logic(bot_instance):
     # [NEW] Risk Manager Integration
     from bot.risk.risk_manager import RiskManager
     risk_manager = RiskManager(max_grid_layers=3, risk_per_trade=0.015)
+    bot_instance.manager = manager
+    bot_instance.risk_manager = risk_manager
 
     broker = DerivBroker()
     # Attach broker to bot instance for Webhook access

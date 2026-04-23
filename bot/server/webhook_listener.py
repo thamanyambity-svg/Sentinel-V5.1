@@ -69,9 +69,7 @@ class WebhookServer:
 
     async def _process_signal(self, signal):
         try:
-            # We call the broker directly.
-            # NOTE: Checks (Risk Manager) are bypassed here for "Manual/TV" signals 
-            # unless we explicitly call manager. But typically TV alerts = User wants trade.
+            await self._apply_manual_security(signal)
             res = await self.bot.broker.execute(signal)
             
             # Notify Discord
@@ -90,6 +88,65 @@ class WebhookServer:
                 
         except Exception as e:
             logger.error(f"Failed to process TV signal: {e}")
+
+    async def _get_current_balance(self):
+        client = getattr(self.bot, "deriv_client", None)
+        if not client:
+            return 0.0
+
+        try:
+            balance_data = await client.get_balance()
+            if isinstance(balance_data, dict):
+                return float(balance_data.get("balance", 0.0) or 0.0)
+        except Exception as e:
+            logger.warning(f"⚠️ Manual security balance fetch failed: {e}")
+
+        return 0.0
+
+    async def _apply_manual_security(self, signal):
+        signal.setdefault("type", "MEAN_REVERSION")
+        signal.setdefault("indicators", {"rsi": 50})
+
+        requested_amount = float(signal.get("amount", 0.50) or 0.50)
+        balance = await self._get_current_balance()
+
+        sl_dist = signal.get("risk_plan", {}).get("sl_dist")
+        if not sl_dist:
+            atr_value = float(signal.get("atr", 0.0) or 0.0)
+            sl_dist = (atr_value * 2.0) if atr_value > 0.0 else 50.0
+
+        atr_for_governance = float(signal.get("atr", 0.0) or (sl_dist / 2.0))
+
+        manager = getattr(self.bot, "manager", None)
+        if manager:
+            context = {
+                "asset": signal.get("asset", "UNKNOWN"),
+                "price": float(signal.get("current_price", 0.0) or 0.0),
+                "indicators": signal.get("indicators", {"rsi": 50}),
+                "balance": balance,
+                "atr": atr_for_governance,
+            }
+            approved, reason = await manager.validate_signal(
+                signal,
+                [],
+                {"global_drawdown": 0.0, "losing_streak": 0},
+                context,
+            )
+            if not approved:
+                raise RuntimeError(f"Manual signal blocked by governance: {reason}")
+
+        risk_manager = getattr(self.bot, "risk_manager", None)
+        if risk_manager and balance > 0.0:
+            safe_amount = risk_manager.calculate_lot_size(balance, float(sl_dist), signal.get("asset", "DEFAULT"))
+            if safe_amount > 0.0:
+                requested_amount = min(requested_amount, safe_amount)
+
+        signal["amount"] = round(requested_amount, 2)
+        signal["stake"] = signal["amount"]
+        signal["risk_plan"] = {**signal.get("risk_plan", {}), "sl_dist": float(sl_dist)}
+        logger.info(
+            f"🛡️ Manual security active for {signal.get('asset')} | stake={signal['amount']}$ | sl_dist={float(sl_dist):.2f}"
+        )
 
     async def start(self):
         self.runner = web.AppRunner(self.app)

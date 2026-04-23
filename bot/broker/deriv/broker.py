@@ -92,8 +92,41 @@ class DerivBroker(BaseBroker):
             else:
                 return {"status": "ERROR", "reason": "MT5_BRIDGE_SEND_FAILED"}
 
-        # ===== API FALLBACK (Not implemented in this clean version) =====
-        return {
-            "status": "BLOCKED",
-            "reason": "DERIV_API_NOT_SUPPORTED_USE_BRIDGE",
-        }
+        # ===== API DIRECT (Deriv WebSocket) =====
+        try:
+            client = DerivClient()
+            symbol = payload.get("symbol", trade.get("asset", "R_100"))
+            side = trade.get("side", "BUY")
+            contract_type = "CALL" if side in ("BUY", "CALL", "UP") else "PUT"
+            amount = trade.get("stake", 0.50)
+            dur_str = str(trade.get("duration", "1m"))
+            unit = dur_str[-1].lower() if dur_str[-1].isalpha() else "m"
+            val = int(dur_str[:-1]) if dur_str[:-1].isdigit() else 1
+
+            res = await client.buy_contract(
+                symbol=symbol,
+                contract_type=contract_type,
+                amount=amount,
+                duration=val,
+                duration_unit=unit,
+            )
+
+            if "error" in res:
+                logger.error(f"❌ Deriv API error: {res['error'].get('message')}")
+                return {"status": "ERROR", "reason": res["error"].get("message", "API_ERROR")}
+
+            contract_id = res.get("buy", {}).get("contract_id")
+            add_active_trade(
+                trade_id=f"deriv_{contract_id}",
+                asset=trade.get("asset", symbol),
+                stake=amount,
+                duration=trade.get("duration", "1m"),
+                metadata={"contract_id": contract_id, "channel": "API"},
+                signal_id=trade.get("id"),
+            )
+            logger.info(f"✅ API TRADE: {contract_type} {symbol} ${amount} | Contract: {contract_id}")
+            return {"status": "FILLED", "api": True, "contract_id": contract_id}
+
+        except Exception as e:
+            logger.error(f"❌ Deriv API execution failed: {e}")
+            return {"status": "ERROR", "reason": str(e)}

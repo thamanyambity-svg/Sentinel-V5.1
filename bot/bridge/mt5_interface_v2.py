@@ -89,6 +89,7 @@ class MT5Bridge:
             "Volatility 100": 1100,    # ~$1,100 per lot
             "EURUSD": 1.08,
             "XAUUSD": 2000,
+            "GOLD": 2000,
             "BTCUSD": 100000,
             "ETHUSD": 3000,
         }

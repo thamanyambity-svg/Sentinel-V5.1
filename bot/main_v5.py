@@ -43,8 +43,8 @@ MAX_DAILY_DD_PCT = float(os.getenv("MAX_DAILY_DD_PCT", "0.05"))
 EA_HEARTBEAT_TIMEOUT_SEC = int(os.getenv("EA_HEARTBEAT_TIMEOUT_SEC", "90"))
 # Mode test: pas de stop trading daily (kill switch + limite trades/jour désactivés)
 TESTING_MODE = os.getenv("TESTING_MODE", "1").strip().lower() in ("1", "true", "yes")
-# Max positions simultanées par actif (5 = plus conservateur, 7 = agressif)
-MAX_POSITIONS_PER_ASSET = int(os.getenv("MAX_POSITIONS_PER_ASSET", "5"))
+# Max positions simultanées par actif (3 = conservateur, sécurité d'abord)
+MAX_POSITIONS_PER_ASSET = int(os.getenv("MAX_POSITIONS_PER_ASSET", "3"))
 # Scalping précis: objectif TP plus serré (0.0003 = ~3 pips équiv.)
 SCALP_TARGET_PCT = float(os.getenv("SCALP_TARGET_PCT", "0.0003"))
 # SL Volatility par défaut (réfléchi, serré pour scalping)
@@ -52,16 +52,14 @@ DEFAULT_SL_PIPS_VOLATILITY = int(os.getenv("DEFAULT_SL_PIPS_VOLATILITY", "40"))
 # Cycles sans mouvement de prix = données figées (marché fermé ou stale)
 STALE_PRICE_CYCLES = int(os.getenv("STALE_PRICE_CYCLES", "5"))
 
-# Configuration V5.5 - Weekend Trading (Deriv Synthetics)
-FOREX_PAIRS = []  # Désactivé le weekend
-GOLD = []
+# Configuration V5.5 — XM Demo (GOLD uniquement)
+GOLD = ["GOLD"]
+FOREX_PAIRS = []
 STOCKS = []
 CRYPTO = []
+SYNTHETIC_INDICES = []
 
-# DERIV SYNTHETIC INDICES — Vol 100 uniquement (Vol 75 retiré définitivement)
-SYNTHETIC_INDICES = ["Volatility 100 Index"]
-
-ALL_ASSETS = FOREX_PAIRS + GOLD + STOCKS + CRYPTO + SYNTHETIC_INDICES
+ALL_ASSETS = GOLD
 
 FAST_SCAN_INTERVAL = 10 
 SLOW_SCAN_INTERVAL = 60 
@@ -128,6 +126,10 @@ async def run_bot():
 
             # A. Check and Notify Position Closures + Status
             status = bridge.get_raw_status()
+            # Normaliser: l'EA XM utilise 'sym' au lieu de 'symbol'
+            for p in status.get('positions', []):
+                if 'symbol' not in p and 'sym' in p:
+                    p['symbol'] = p['sym']
             current_positions = {str(p.get('ticket', '')): p for p in status.get('positions', []) if p.get('ticket') is not None}
 
             # Heartbeat EA: alerte si status.json trop vieux
@@ -211,15 +213,15 @@ async def run_bot():
                     # Update profit but keep open_time
                     known_positions[ticket]["last_profit"] = p.get('profit', 0)
 
-            # B. Determine Scan List (ALADDIN WEEKEND EDITION)
+            # B. Determine Scan List (GOLD PRIORITY)
             do_stock_scan = (current_time - last_stock_scan) >= SLOW_SCAN_INTERVAL
-            scan_list = FOREX_PAIRS + GOLD + CRYPTO + SYNTHETIC_INDICES  # Include synthetics
+            scan_list = GOLD + FOREX_PAIRS + CRYPTO + SYNTHETIC_INDICES
             if do_stock_scan:
                 scan_list += STOCKS
                 last_stock_scan = current_time
                 logger.info("\n⏳ --- FULL SCAN CYCLE (All Assets) ---")
             else:
-                logger.info("\n⏳ --- FAST SCAN CYCLE (Synthetics + Forex) ---")
+                logger.info("\n⏳ --- FAST SCAN CYCLE (GOLD + Forex) ---")
             
             # C. Global Risk Check (en TESTING_MODE on ne bloque pas sur HIGH pour tester)
             global_cond = await brain.analyze_market_conditions()
@@ -298,7 +300,7 @@ async def run_bot():
                                 logger.info(f"📐 RSI Extreme {asset}: {signal} | SL {sl_pips} pips | {pattern_extra}")
 
                     if not signal:
-                        # Fallback: trend-based (ALADDIN), seuil 0.001% ultra-bas pour tester
+                        # Fallback trend-based pour GOLD et Volatility
                         if "Volatility" in asset:
                             if change > 0.001: trend = "WEAK_UP"
                             elif change < -0.001: trend = "WEAK_DOWN"
@@ -315,6 +317,12 @@ async def run_bot():
                                     # Doji ou corps trop petit: sens selon clôture vs clôture précédente
                                     elif c > prev_c + 0.001: trend, pattern_extra = "WEAK_UP", "M5_CLOSE_UP"
                                     elif c < prev_c - 0.001: trend, pattern_extra = "WEAK_DOWN", "M5_CLOSE_DOWN"
+                        # GOLD: fallback basé sur change% (seuil ultra-bas pour capter les micro-mouvements)
+                        elif asset in ("GOLD", "XAUUSD"):
+                            if change > 0.01: trend = "WEAK_UP"
+                            elif change < -0.01: trend = "WEAK_DOWN"
+                            elif change > 0.005: trend, pattern_extra = "WEAK_UP", "GOLD_MICRO_UP"
+                            elif change < -0.005: trend, pattern_extra = "WEAK_DOWN", "GOLD_MICRO_DOWN"
                         if trend in ["STRONG_UP", "WEAK_UP"]: signal = "BUY"
                         elif trend in ["STRONG_DOWN", "WEAK_DOWN"]: signal = "SELL"
                         if signal:
@@ -340,12 +348,11 @@ async def run_bot():
                             logger.info(f"⏸️ {asset}: Max positions reached ({open_count}/{MAX_POSITIONS_PER_ASSET})")
                             continue
 
-                        # Risk gate: désactivé en TESTING_MODE (pas de stop daily pour tester)
-                        if not TESTING_MODE:
-                            allowed, reason = can_execute_trade({"asset": asset})
-                            if not allowed:
-                                logger.info(f"⏸️ {asset}: Risk gate — {reason}")
-                                continue
+                        # Risk gate: TOUJOURS actif (sécurité obligatoire)
+                        allowed, reason = can_execute_trade({"asset": asset})
+                        if not allowed:
+                            logger.info(f"⏸️ {asset}: Risk gate — {reason}")
+                            continue
 
                         # VOLUME CONFIGURATION (SCALPER MODE)
                         volume = 0.50 if "Volatility" in asset else 0.10
@@ -378,9 +385,13 @@ async def run_bot():
                             elif strategy_name in ("VOLATILITY_RIDER", "RSI_EXTREME_REVERSAL"):
                                 sl_pips = max(sl_pips, atr_sl)  # garder le max (plus sécurisant)
 
-                        # SL réfléchi: IFVG = zone-based; sinon Volatility serré, min 5
+                        # SL réfléchi par instrument
                         if strategy_name == "IFVG_SCALP":
                             pass  # déjà défini par IFVG
+                        elif asset in ("GOLD", "XAUUSD"):
+                            # GOLD: SL serré en points (1 point = $0.01 sur XM)
+                            # 300 points = $3.00 de SL — adapté au scalping
+                            sl_pips = 300
                         elif "Volatility" not in asset and "Index" not in asset:
                             sl_pips = int(price * 0.00025 * (100 if "JPY" in asset else 10000))
                         if sl_pips < 5:

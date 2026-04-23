@@ -137,6 +137,74 @@ class DerivClient:
             logger.error(f"Error selling contract {contract_id}: {e}")
             return {"error": str(e)}
 
+    # ── Trading API Methods ────────────────────────────────────
+
+    async def buy_contract(self, symbol: str, contract_type: str, amount: float,
+                           duration: int = 1, duration_unit: str = "m") -> dict:
+        """
+        Buy a contract on Deriv.
+        contract_type: CALL, PUT, MULTUP, MULTDOWN, etc.
+        Returns full API response.
+        """
+        proposal_req = {
+            "proposal": 1,
+            "amount": amount,
+            "basis": "stake",
+            "contract_type": contract_type,
+            "currency": "USD",
+            "symbol": symbol,
+            "duration": duration,
+            "duration_unit": duration_unit,
+        }
+        proposal_res = await self.send(proposal_req)
+        if "error" in proposal_res:
+            logger.error(f"❌ Proposal error: {proposal_res['error'].get('message')}")
+            return proposal_res
+
+        proposal_id = proposal_res.get("proposal", {}).get("id")
+        if not proposal_id:
+            logger.error(f"❌ No proposal id in response")
+            return {"error": {"message": "NO_PROPOSAL_ID"}}
+
+        buy_res = await self.send({"buy": proposal_id, "price": amount})
+        if "error" in buy_res:
+            logger.error(f"❌ Buy error: {buy_res['error'].get('message')}")
+        else:
+            contract_id = buy_res.get("buy", {}).get("contract_id")
+            logger.info(f"✅ Contract bought: {contract_id} | {contract_type} {symbol} ${amount}")
+        return buy_res
+
+    async def get_candles(self, symbol: str, granularity: int = 300,
+                          count: int = 100) -> list:
+        """
+        Fetch OHLC candles from Deriv API.
+        granularity: seconds (60=M1, 300=M5, 600=M10, 3600=H1)
+        Returns list of {epoch, open, high, low, close} dicts.
+        """
+        req = {
+            "ticks_history": symbol,
+            "adjust_start_time": 1,
+            "count": count,
+            "end": "latest",
+            "granularity": granularity,
+            "style": "candles",
+        }
+        res = await self.send(req)
+        if "error" in res:
+            logger.error(f"❌ Candles error: {res['error'].get('message')}")
+            return []
+        candles = res.get("candles", [])
+        return candles
+
+    async def get_tick(self, symbol: str) -> dict:
+        """Get latest tick for a symbol."""
+        res = await self.send({"ticks": symbol, "subscribe": 0})
+        if "tick" in res:
+            return res["tick"]
+        return {}
+
+    # ── Utility ──────────────────────────────────────────────
+
     async def _ping_loop(self):
         while self.connected:
             try:
