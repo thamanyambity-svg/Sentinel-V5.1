@@ -1,0 +1,63 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="256" height="256" fill="#0d1117"/>
+  
+  <!-- Gradient defs -->
+  <defs>
+    <linearGradient id="gradientPrimary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891b2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="gradientBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891b2;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:0.3" />
+    </linearGradient>
+    
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Outer circle with gradient border -->
+  <circle cx="128" cy="128" r="120" fill="none" stroke="url(#gradientBorder)" stroke-width="2" filter="url(#glow)"/>
+  
+  <!-- Main icon container -->
+  <g transform="translate(128, 128)">
+    <!-- S symbol (left) -->
+    <path d="M -35 -25 Q -35 -35 -25 -35 Q -15 -35 -15 -25 Q -15 -20 -30 -17.5 Q -35 -16.5 -35 -8 Q -35 0 -20 0 Q -5 0 -5 -8" 
+          fill="none" stroke="url(#gradientPrimary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- P symbol (right) -->
+    <path d="M 5 -35 L 5 5 M 5 -20 Q 5 -30 20 -30 Q 30 -30 30 -22.5 Q 30 -15 20 -15 L 5 -15" 
+          fill="none" stroke="url(#gradientPrimary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Predator symbol (upward arrow indicating growth) -->
+    <g transform="translate(0, 20)">
+      <!-- Arrow up -->
+      <path d="M 0 -15 L -8 0 L 0 5 L 8 0 Z" fill="url(#gradientPrimary)" filter="url(#glow)"/>
+      
+      <!-- Pulse circles -->
+      <circle cx="0" cy="-15" r="3" fill="#10b981" opacity="0.8"/>
+      <circle cx="-8" cy="0" r="3" fill="#0891b2" opacity="0.8"/>
+      <circle cx="8" cy="0" r="3" fill="#0891b2" opacity="0.8"/>
+    </g>
+    
+    <!-- Bottom accent line -->
+    <line x1="-40" y1="45" x2="40" y2="45" stroke="url(#gradientPrimary)" stroke-width="2" opacity="0.5"/>
+  </g>
+  
+  <!-- Animated glow circles (would animate in actual usage) -->
+  <circle cx="128" cy="128" r="130" fill="none" stroke="url(#gradientPrimary)" stroke-width="1" opacity="0.2"/>
+  <circle cx="128" cy="128" r="110" fill="none" stroke="url(#gradientPrimary)" stroke-width="1" opacity="0.15"/>
+  
+  <!-- Corner accents -->
+  <circle cx="20" cy="20" r="2" fill="#0891b2" opacity="0.6"/>
+  <circle cx="236" cy="20" r="2" fill="#10b981" opacity="0.6"/>
+  <circle cx="20" cy="236" r="2" fill="#10b981" opacity="0.6"/>
+  <circle cx="236" cy="236" r="2" fill="#0891b2" opacity="0.6"/>
+</svg>
