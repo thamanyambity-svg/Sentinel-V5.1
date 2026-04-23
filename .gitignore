@@ -70,6 +70,9 @@ account_history.json
 macro_bias.json
 model_registry.json
 
+# Nested git repositories (not declared as submodules)
+zmq_lib/
+
 # Backups
 *.bak
 *.old_*_bak
