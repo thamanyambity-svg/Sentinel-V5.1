@@ -48,3 +48,32 @@ sentinel_xgb_model.*
 .idea/
 bot/journal/*.jsonl
 .env_backup
+
+# Runtime state (process locks, pids, transient state)
+*.pid
+*.lock
+.bot_main_*.pid
+bot_state.json
+ratchet_state.json
+production.pid
+sentinel_v5.lock
+news_cache.json
+threshold.json
+trades_learning.json
+trades_learning.json.*_bak
+account_history.json
+macro_bias.json
+model_registry.json
+
+# Backups
+*.bak
+*.old_*_bak
+*.pre_merge_bak
+*.OVERFIT.bak
+*.candidate
+
+# ML model snapshots (keep only live model_xgb.pkl)
+model_xgb_backup.pkl
+model_xgb.pkl.old_*
+models/model_v*.json
+models_archive/
