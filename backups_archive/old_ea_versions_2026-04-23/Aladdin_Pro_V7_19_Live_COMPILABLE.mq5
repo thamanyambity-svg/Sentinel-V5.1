@@ -302,6 +302,7 @@ int  CountSymbolConsecLosses(string sym);
 bool IsGlobalTradingAllowed();
 bool IsNewsBlocked(string symbol);
 void ApplyPreNewsSecure();
+void ApplyManualProtection_V7();
 
 //=============================================================
 // EXPERT HANDLERS
@@ -435,7 +436,51 @@ void OnDeinit(const int reason) {
     for(int i = 0; i < symbolCount; i++) ReleaseSymbolIndicators(i);
 }
 
+// --- MODULE D'EXÉCUTION MOBILE (V7.27) ---
+// Lit le fichier généré par le pont Python (Supabase -> MT5)
+void ExecuteMobileOrders() {
+    string path = "mobile_commands.json";
+    
+    // 1. Vérifier si une commande mobile est en attente
+    if(!FileIsExist(path, FILE_COMMON)) return; 
+
+    int h = FileOpen(path, FILE_READ | FILE_TXT | FILE_ANSI | FILE_COMMON);
+    if(h != INVALID_HANDLE) {
+        string content = "";
+        while(!FileIsEnding(h)) content += FileReadString(h);
+        FileClose(h);
+        
+        // On supprime le fichier immédiatement pour éviter les doublons
+        FileDelete(path, FILE_COMMON);
+
+        // 2. Analyse de la commande JSON (Simple Parsing)
+        if(StringFind(content, "execute_trade") >= 0) {
+            string sym = "XAUUSD"; // Par défaut ou extrait du JSON
+            ENUM_ORDER_TYPE type = (StringFind(content, "\"type\":\"BUY\"") >= 0) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+            
+            // Extraction rapide du lot (volume)
+            int posLot = StringFind(content, "\"quantity\":");
+            double lot = (posLot > 0) ? StringToDouble(StringSubstr(content, posLot + 11, 4)) : 0.01;
+
+            // 3. Exécution de l'ordre au marché
+            double price = (type == ORDER_TYPE_BUY) ? SymbolInfoDouble(sym, SYMBOL_ASK) : SymbolInfoDouble(sym, SYMBOL_BID);
+            
+            // On utilise les paramètres de risque d'Aladdin (ATR pour SL/TP)
+            double atr = 2.0; // Valeur par défaut ou calculée par Aladdin
+            double sl = (type == ORDER_TYPE_BUY) ? price - (atr * 2.0) : price + (atr * 2.0);
+            double tp = (type == ORDER_TYPE_BUY) ? price + (atr * 4.0) : price - (atr * 4.0);
+
+            if(trade.PositionOpen(sym, type, lot, price, sl, tp, "MOBILE_ORDER_IPHONE")) {
+                Log.Warn("MOBILE", "ORDRE IPHONE EXÉCUTÉ : " + (type==ORDER_TYPE_BUY?"ACHAT":"VENTE") + " " + DoubleToString(lot, 2) + " lots.");
+            } else {
+                Log.Error("MOBILE", "ÉCHEC DE L'ORDRE IPHONE : " + (string)GetLastError());
+            }
+        }
+    }
+}
+
 void OnTimer() {
+    ExecuteMobileOrders(); // Execution ultra-rapide Mobile
     CheckDailyReset_V7();
     EvaluateRulesEngine();
     UpdateMFE_MAE();
@@ -697,7 +742,8 @@ void ApplyPreNewsSecure() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue;
         if(IsBEDone(ticket)) continue;
 
         string sym   = PositionGetString(POSITION_SYMBOL);
@@ -725,6 +771,68 @@ void ApplyPreNewsSecure() {
             MarkBEDone(ticket);
             Log.Warn("PRE_NEWS", sym + " BE force avant news" +
                      " PnL=$" + DoubleToString(pnl, 2));
+        }
+    }
+}
+
+void ApplyManualProtection_V7() {
+    for(int i = PositionsTotal()-1; i >= 0; i--) {
+        ulong ticket = PositionGetTicket(i);
+        if(ticket == 0) continue;
+        if(!PositionSelectByTicket(ticket)) continue;
+
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != 0) continue;
+
+        double sl = PositionGetDouble(POSITION_SL);
+        double tp = PositionGetDouble(POSITION_TP);
+        if(sl > 0.0 && tp > 0.0) continue;
+
+        string sym   = PositionGetString(POSITION_SYMBOL);
+        int    ptype = (int)PositionGetInteger(POSITION_TYPE);
+        double open  = PositionGetDouble(POSITION_PRICE_OPEN);
+        double cur   = PositionGetDouble(POSITION_PRICE_CURRENT);
+        double atr   = 0.0;
+
+        for(int j = 0; j < symbolCount; j++) {
+            if(symbols[j].symbol == sym) {
+                atr = symbols[j].lastATR;
+                break;
+            }
+        }
+        if(atr <= 0.0) continue;
+
+        int    digits    = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+        double point     = SymbolInfoDouble(sym, SYMBOL_POINT);
+        double stopLevel = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * point;
+        double buffer    = StopLevelBuffer_Pts * point;
+        double slDist    = MathMax(atr * ATR_SL_Multiplier, stopLevel + buffer);
+        double tpDist    = MathMax(atr * ATR_TP_Multiplier, stopLevel + buffer);
+        double newSL     = sl;
+        double newTP     = tp;
+
+        if(ptype == POSITION_TYPE_BUY) {
+            if(newSL <= 0.0) {
+                newSL = NormalizeDouble(MathMin(open - slDist, cur - stopLevel - buffer), digits);
+            }
+            if(newTP <= 0.0 || newTP <= cur + stopLevel) {
+                newTP = NormalizeDouble(MathMax(open + tpDist, cur + stopLevel + buffer), digits);
+            }
+        }
+        else if(ptype == POSITION_TYPE_SELL) {
+            if(newSL <= 0.0) {
+                newSL = NormalizeDouble(MathMax(open + slDist, cur + stopLevel + buffer), digits);
+            }
+            if(newTP <= 0.0 || newTP >= cur - stopLevel) {
+                newTP = NormalizeDouble(MathMin(open - tpDist, cur - stopLevel - buffer), digits);
+            }
+        }
+        else continue;
+
+        if(trade.PositionModify(ticket, newSL, newTP)) {
+            Log.Warn("MANUAL_PROTECT", sym +
+                     " protection auto SL=" + DoubleToString(newSL, digits) +
+                     " TP=" + DoubleToString(newTP, digits));
         }
     }
 }
@@ -786,7 +894,8 @@ void ApplyBreakEven_V7() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue;
 
         // Une seule fois par trade
         if(IsBEDone(ticket)) continue;
@@ -1367,6 +1476,7 @@ void CheckForExits_V7() {
     }
 
     ExportTradeHistory_V7();
+    ApplyManualProtection_V7(); // V7.21 — ajouter SL/TP aux trades manuels non proteges
     ApplyPreNewsSecure();   // V7.18 — Sécuriser positions avant news
     ApplyBreakEven_V7();    // V7.12 — Break-Even en premier
     ApplyTrailingStop_V7(); // Trailing ensuite
@@ -1382,7 +1492,8 @@ void ApplyTrailingStop_V7() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue;
 
         string sym   = PositionGetString(POSITION_SYMBOL);
         int    ptype = (int)PositionGetInteger(POSITION_TYPE);

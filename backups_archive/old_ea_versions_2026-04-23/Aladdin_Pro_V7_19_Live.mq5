@@ -85,7 +85,7 @@ input int    StopLevelBuffer_Pts    = 100;
 
 input group "=== BREAK-EVEN (V7.12) ==="
 input bool   EnableBreakEven        = true;  // Activer le Break-Even automatique
-input double BE_TriggerUSD          = 1.50;  // Profit $ pour déclencher le BE
+input double BE_TriggerUSD          = 0.50;  // Profit $ pour déclencher le BE (serré pour GOLD scalp)
 input int    BE_PipsBuffer          = 2;     // Pips de sécurité au-delà du prix d'entrée
 
 input group "=== RÈGLES AUTOMATIQUES ==="
@@ -302,6 +302,7 @@ int  CountSymbolConsecLosses(string sym);
 bool IsGlobalTradingAllowed();
 bool IsNewsBlocked(string symbol);
 void ApplyPreNewsSecure();
+void ApplyManualProtection_V7();
 
 //=============================================================
 // EXPERT HANDLERS
@@ -697,7 +698,8 @@ void ApplyPreNewsSecure() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue;
         if(IsBEDone(ticket)) continue;
 
         string sym   = PositionGetString(POSITION_SYMBOL);
@@ -725,6 +727,68 @@ void ApplyPreNewsSecure() {
             MarkBEDone(ticket);
             Log.Warn("PRE_NEWS", sym + " BE force avant news" +
                      " PnL=$" + DoubleToString(pnl, 2));
+        }
+    }
+}
+
+void ApplyManualProtection_V7() {
+    for(int i = PositionsTotal()-1; i >= 0; i--) {
+        ulong ticket = PositionGetTicket(i);
+        if(ticket == 0) continue;
+        if(!PositionSelectByTicket(ticket)) continue;
+
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != 0) continue;
+
+        double sl = PositionGetDouble(POSITION_SL);
+        double tp = PositionGetDouble(POSITION_TP);
+        if(sl > 0.0 && tp > 0.0) continue;
+
+        string sym   = PositionGetString(POSITION_SYMBOL);
+        int    ptype = (int)PositionGetInteger(POSITION_TYPE);
+        double open  = PositionGetDouble(POSITION_PRICE_OPEN);
+        double cur   = PositionGetDouble(POSITION_PRICE_CURRENT);
+        double atr   = 0.0;
+
+        for(int j = 0; j < symbolCount; j++) {
+            if(symbols[j].symbol == sym) {
+                atr = symbols[j].lastATR;
+                break;
+            }
+        }
+        if(atr <= 0.0) continue;
+
+        int    digits    = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+        double point     = SymbolInfoDouble(sym, SYMBOL_POINT);
+        double stopLevel = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * point;
+        double buffer    = StopLevelBuffer_Pts * point;
+        double slDist    = MathMax(atr * ATR_SL_Multiplier, stopLevel + buffer);
+        double tpDist    = MathMax(atr * ATR_TP_Multiplier, stopLevel + buffer);
+        double newSL     = sl;
+        double newTP     = tp;
+
+        if(ptype == POSITION_TYPE_BUY) {
+            if(newSL <= 0.0) {
+                newSL = NormalizeDouble(MathMin(open - slDist, cur - stopLevel - buffer), digits);
+            }
+            if(newTP <= 0.0 || newTP <= cur + stopLevel) {
+                newTP = NormalizeDouble(MathMax(open + tpDist, cur + stopLevel + buffer), digits);
+            }
+        }
+        else if(ptype == POSITION_TYPE_SELL) {
+            if(newSL <= 0.0) {
+                newSL = NormalizeDouble(MathMax(open + slDist, cur + stopLevel + buffer), digits);
+            }
+            if(newTP <= 0.0 || newTP >= cur - stopLevel) {
+                newTP = NormalizeDouble(MathMin(open - tpDist, cur - stopLevel - buffer), digits);
+            }
+        }
+        else continue;
+
+        if(trade.PositionModify(ticket, newSL, newTP)) {
+            Log.Warn("MANUAL_PROTECT", sym +
+                     " protection auto SL=" + DoubleToString(newSL, digits) +
+                     " TP=" + DoubleToString(newTP, digits));
         }
     }
 }
@@ -786,7 +850,8 @@ void ApplyBreakEven_V7() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue;
 
         // Une seule fois par trade
         if(IsBEDone(ticket)) continue;
@@ -1367,13 +1432,14 @@ void CheckForExits_V7() {
     }
 
     ExportTradeHistory_V7();
+    ApplyManualProtection_V7(); // V7.21 — ajouter SL/TP aux trades manuels non proteges
     ApplyPreNewsSecure();   // V7.18 — Sécuriser positions avant news
     ApplyBreakEven_V7();    // V7.12 — Break-Even en premier
     ApplyTrailingStop_V7(); // Trailing ensuite
 }
 
 //=============================================================
-// 13. TRAILING STOP ATR-BASED
+// 13. TRAILING STOP ATR-BASED (V7.20 — GOLD-OPTIMIZED)
 //=============================================================
 void ApplyTrailingStop_V7() {
     if(!EnableTrailingStop) return;
@@ -1382,7 +1448,8 @@ void ApplyTrailingStop_V7() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        long posMagic = PositionGetInteger(POSITION_MAGIC);
+        if(posMagic != MagicNumber && posMagic != 0) continue;
 
         string sym   = PositionGetString(POSITION_SYMBOL);
         int    ptype = (int)PositionGetInteger(POSITION_TYPE);
@@ -1397,22 +1464,32 @@ void ApplyTrailingStop_V7() {
         }
         if(atr <= 0.0) continue;
 
-        double activation = atr * Trail_ATR_Activation;
-        double step       = atr * Trail_ATR_Step;
         double point      = SymbolInfoDouble(sym, SYMBOL_POINT);
         int    digits     = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
         double newSL      = sl;
 
+        // GOLD: trailing serré — activation rapide, step serré
+        // ATR GOLD ~15$ → activation=1.50$, step=1.00$ (scalping optimisé)
+        bool isGold = (sym == "GOLD" || sym == "XAUUSD" || sym == "XAUUSDm");
+        double activation, step;
+        if(isGold) {
+            activation = MathMin(atr * 0.10, 2.00);  // 10% ATR, max $2.00
+            step       = MathMin(atr * 0.07, 1.50);  // 7% ATR, max $1.50
+        } else {
+            activation = atr * Trail_ATR_Activation;
+            step       = atr * Trail_ATR_Step;
+        }
+
         if(ptype == POSITION_TYPE_BUY) {
             if(cur - open < activation) continue;
             double candidate = NormalizeDouble(cur - step, digits);
-            if(candidate < sl) continue;  // FIX: Changed <= to < (allow equal SL)
+            if(candidate < sl) continue;
             newSL = candidate;
         }
         else if(ptype == POSITION_TYPE_SELL) {
             if(open - cur < activation) continue;
             double candidate = NormalizeDouble(cur + step, digits);
-            if(sl > 0.0 && candidate > sl) continue;  // FIX: Changed >= to > (allow equal SL)
+            if(sl > 0.0 && candidate > sl) continue;
             newSL = candidate;
         }
         else continue;
@@ -1424,7 +1501,8 @@ void ApplyTrailingStop_V7() {
         if(trade.PositionModify(ticket, newSL, tp)) {
             Log.Info("TRAIL", sym +
                      " SL: " + DoubleToString(sl,    digits) +
-                     " -> "  + DoubleToString(newSL, digits));
+                     " -> "  + DoubleToString(newSL, digits) +
+                     (isGold ? " [GOLD-TIGHT]" : ""));
         }
     }
 }
@@ -1858,7 +1936,24 @@ void ProcessPythonCommands() {
     while(!FileIsEnding(h)) content += FileReadString(h);
     FileClose(h);
 
-    if(StringFind(content, "modify_sl") < 0) return;
+    // ── Resume Trading Command ──
+    if(StringFind(content, "resume_trading") >= 0) {
+        tradingEnabled = true;
+        manualPause    = false;
+        Log.Info("CMD", "Trading REACTIVE par commande Python");
+    }
+
+    if(StringFind(content, "modify_sl") < 0) {
+        // Effacer les commandes traitées même si pas de modify_sl
+        if(StringFind(content, "resume_trading") >= 0) {
+            int hw0 = FileOpen(path, FILE_WRITE | FILE_TXT | FILE_ANSI);
+            if(hw0 != INVALID_HANDLE) {
+                FileWriteString(hw0, "{\"commands\":[],\"processed\":[]}");
+                FileClose(hw0);
+            }
+        }
+        return;
+    }
 
     int pos = 0;
     while((pos = StringFind(content, "\"action\":\"modify_sl\"", pos)) >= 0) {
