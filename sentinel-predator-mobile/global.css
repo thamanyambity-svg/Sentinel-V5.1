@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FORCED WEB FONTS FALLBACK */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Base Colors - Institutional BlackRock Palette */
+    --background: 210 28% 7%;      /* #0d1117 */
+    --foreground: 213 32% 91%;     /* #e2e8f0 */
+    --card: 210 21% 11%;           /* #161b22 */
+    --card-foreground: 213 32% 91%;
+    --popover: 210 28% 7%;
+    --popover-foreground: 213 32% 91%;
+    
+    /* Brand Colors - Institutional Cyan */
+    --primary: 191 91% 36%;        /* #0891b2 */
+    --primary-foreground: 213 32% 91%;
+    --secondary: 210 21% 11%;
+    --secondary-foreground: 213 32% 91%;
+    
+    /* Semantic Colors - Professional Signals */
+    --success: 160 84% 39%;        /* #10b981 */
+    --warning: 38 92% 50%;         /* #f59e0b */
+    --error: 0 84% 60%;            /* #ef4444 */
+    
+    /* UI Elements */
+    --muted: 210 9% 58%;           /* #8b949e */
+    --muted-foreground: 210 9% 45%;
+    --accent: 191 91% 36%;
+    --accent-foreground: 213 32% 91%;
+    --border: 210 21% 16%;         /* #30363d approx */
+    --input: 210 21% 16%;
+    --ring: 191 91% 36%;
+  }
+}
+
+@layer utilities {
+  .glass-blur {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  
+  .border-glass {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 15px rgba(8, 145, 178, 0.2);
+  }
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Inter', sans-serif;
+}

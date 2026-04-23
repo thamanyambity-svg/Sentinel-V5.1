@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL V11 | Premium Trading Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/countup@2.3.1/dist/countUp.umd.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f59e0b;
+            --primary-dark: #d97706;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark-100: #0f172a;
+            --dark-200: #1e293b;
+            --dark-300: #334155;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+        }
+
+        body {
+            font-family: 'Sora', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #0f172a 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 70%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(50px, 50px) rotate(180deg); }
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header Premium */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            padding: 30px 40px;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-section h1 {
+            font-size: 36px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .logo-section p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 13px;
+        }
+
+        .status-pulse {
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.6), 0 0 20px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.1); }
+        }
+
+        /* Grid System */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .grid.large {
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        }
+
+        .grid.full {
+            grid-template-columns: 1fr;
+        }
+
+        /* Premium Card */
+        .card {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 16px;
+            padding: 28px;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.15), transparent);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(245, 158, 11, 0.3);
+            background: rgba(30, 41, 59, 0.5);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(245, 158, 11, 0.1);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card h2 {
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        /* Value Display */
+        .value-block {
+            margin-bottom: 20px;
+        }
+
+        .value-label {
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .value-display {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Courier Prime', monospace;
+            letter-spacing: -1px;
+            position: relative;
+        }
+
+        .value-display.positive {
+            color: var(--success);
+        }
+
+        .value-display.negative {
+            color: var(--danger);
+        }
+
+        .value-small {
+            font-size: 20px;
+        }
+
+        .value-subtext {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-mini {
+            background: rgba(51, 65, 85, 0.2);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-mini:hover {
+            background: rgba(51, 65, 85, 0.4);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .stat-mini .label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .stat-mini .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Courier Prime', monospace;
+        }
+
+        /* Signal Box */
+        .signal-item {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), rgba(245, 158, 11, 0.02));
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .signal-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+        }
+
+        .signal-item:hover {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-color: rgba(245, 158, 11, 0.4);
+            transform: translateX(4px);
+        }
+
+        .signal-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .signal-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            font-family: 'Courier Prime', monospace;
+        }
+
+        .signal-value.buy {
+            color: var(--success);
+        }
+
+        .signal-value.sell {
+            color: var(--danger);
+        }
+
+        /* Performance Chart */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        /* Icon Badge */
+        .icon-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 10px;
+            font-size: 20px;
+            margin-right: 12px;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--primary));
+            border-radius: 3px;
+            animation: expand 0.6s ease-out;
+        }
+
+        @keyframes expand {
+            from { width: 0; }
+            to { width: var(--width, 100%); }
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(245, 158, 11, 0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 60px;
+            padding: 30px 0;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+
+            .logo-section h1 {
+                font-size: 28px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .value-display {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo-section">
+                <h1>🚀 SENTINEL</h1>
+                <p>Institutional Trading AI Platform</p>
+            </div>
+            <div class="status-badge">
+                <span class="status-pulse"></span>
+                <span>System Healthy • Last update: <span id="time">--:--:--</span></span>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid large">
+            <!-- Account Card -->
+            <div class="card">
+                <h2>Account Status</h2>
+                <div id="account-content">
+                    <div class="loading"><div class="loader"></div> Loading...</div>
+                </div>
+            </div>
+
+            <!-- ML Signals Card -->
+            <div class="card">
+                <h2>AI Signals</h2>
+                <div id="signals-content">
+                    <div class="loading"><div class="loader"></div> Loading...</div>
+                </div>
+            </div>
+
+            <!-- Backtest Card -->
+            <div class="card">
+                <h2>Strategy Performance</h2>
+                <div id="backtest-content">
+                    <div class="loading"><div class="loader"></div> Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Width Charts -->
+        <div class="grid full">
+            <div class="card">
+                <h2>Performance Metrics Overview</h2>
+                <div class="stats-grid">
+                    <div class="stat-mini">
+                        <span class="label">Win Rate</span>
+                        <div class="value" id="stat-wr">--</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="wr-bar"></div>
+                        </div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Profit Factor</span>
+                        <div class="value" id="stat-pf">--</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="pf-bar"></div>
+                        </div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Sharpe Ratio</span>
+                        <div class="value" id="stat-sh">--</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="sh-bar"></div>
+                        </div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Total Return</span>
+                        <div class="value" id="stat-ret">--</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="ret-bar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>SENTINEL V11 • Premium Trading Dashboard • Real-time Data Feed</p>
+            <p style="margin-top: 10px; color: rgba(148, 163, 184, 0.7);">API: http://localhost:5000 • Last Sync: <span id="sync">--:--:--</span></p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api/v1';
+        let refreshInterval;
+
+        async function loadDashboard() {
+            try {
+                // Fetch all data
+                const [accountRes, mlRes, backtestRes] = await Promise.all([
+                    fetch(`${API_BASE}/account`),
+                    fetch(`${API_BASE}/ml`),
+                    fetch(`${API_BASE}/backtest`)
+                ]);
+
+                const account = await accountRes.json();
+                const ml = await mlRes.json();
+                const backtest = await backtestRes.json();
+
+                if (account.status === 'success') displayAccount(account.data);
+                if (ml.status === 'success') displaySignals(ml.data);
+                if (backtest.status === 'success') displayBacktest(backtest.data);
+
+                updateTime();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function displayAccount(data) {
+            const drawdownColor = data.drawdown > 20 ? '#ef4444' : data.drawdown > 10 ? '#f59e0b' : '#10b981';
+            const html = `
+                <div class="value-block">
+                    <span class="value-label">Balance</span>
+                    <div class="value-display">$${data.balance.toFixed(2)}</div>
+                    <span class="value-subtext">Current account balance</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-mini">
+                        <span class="label">Equity</span>
+                        <div class="value">$${data.equity.toFixed(2)}</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Drawdown</span>
+                        <div class="value" style="color: ${drawdownColor};">${data.drawdown.toFixed(2)}%</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Positions</span>
+                        <div class="value">${data.positions_count}</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Status</span>
+                        <div class="value" style="color: #10b981;">✓ ACTIVE</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('account-content').innerHTML = html;
+        }
+
+        function displaySignals(data) {
+            const sovereign = data.sovereign || {};
+            const decision = sovereign.decision || 'HOLD';
+            const decisionColor = decision === 'BUY' ? '#10b981' : decision === 'SELL' ? '#ef4444' : '#f59e0b';
+
+            const html = `
+                <div class="signal-item">
+                    <span class="signal-label">Decision</span>
+                    <div class="signal-value ${decision === 'BUY' ? 'buy' : decision === 'SELL' ? 'sell' : ''}">${decision}</div>
+                </div>
+                <div class="signal-item">
+                    <span class="signal-label">Asset</span>
+                    <div class="signal-value" style="color: var(--primary);">${sovereign.asset || 'N/A'}</div>
+                </div>
+                <div class="signal-item">
+                    <span class="signal-label">Confidence</span>
+                    <div class="signal-value" style="color: #10b981;">${((sovereign.nexus_prob || 0) * 100).toFixed(1)}%</div>
+                </div>
+                <div class="signal-item">
+                    <span class="signal-label">Kelly Risk</span>
+                    <div class="signal-value" style="color: var(--primary);">${(sovereign.kelly_risk || 0).toFixed(2)}x</div>
+                </div>
+                <div style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.1); border-radius: 12px; padding: 12px; margin-top: 16px;">
+                    <span class="signal-label">Latest Reasoning</span>
+                    <p style="font-size: 12px; line-height: 1.5; color: var(--text-secondary); margin-top: 8px;">${sovereign.reasoning || 'Analyzing market conditions...'}</p>
+                </div>
+            `;
+            document.getElementById('signals-content').innerHTML = html;
+        }
+
+        function displayBacktest(data) {
+            if (!data) return;
+
+            const html = `
+                <div class="value-block">
+                    <span class="value-label">Status</span>
+                    <div class="value-display" style="font-size: 28px; color: ${data.profit_factor >= 1.5 ? '#10b981' : '#f59e0b'};">
+                        ${data.status || 'GOOD'}
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-mini">
+                        <span class="label">Profit Factor</span>
+                        <div class="value" style="color: #10b981;">${(data.profit_factor || 0).toFixed(3)}</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Win Rate</span>
+                        <div class="value">${((data.win_rate || 0) * 100).toFixed(1)}%</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Sharpe Ratio</span>
+                        <div class="value">${(data.sharpe || 0).toFixed(2)}</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="label">Max Drawdown</span>
+                        <div class="value" style="color: #ef4444;">${(data.max_drawdown_pct || 0).toFixed(2)}%</div>
+                    </div>
+                </div>
+                <div style="margin-top: 16px;">
+                    <span class="value-label">Return on Investment</span>
+                    <div class="value-display" style="font-size: 28px; color: #10b981;">+${(data.return_pct || 0).toFixed(2)}%</div>
+                </div>
+            `;
+            document.getElementById('backtest-content').innerHTML = html;
+
+            // Update metrics
+            document.getElementById('stat-wr').textContent = ((data.win_rate || 0) * 100).toFixed(1) + '%';
+            document.getElementById('stat-pf').textContent = (data.profit_factor || 0).toFixed(3);
+            document.getElementById('stat-sh').textContent = (data.sharpe || 0).toFixed(2);
+            document.getElementById('stat-ret').textContent = (data.return_pct || 0).toFixed(2) + '%';
+
+            // Update progress bars
+            document.getElementById('wr-bar').style.setProperty('--width', Math.min((data.win_rate || 0) * 100, 100) + '%');
+            document.getElementById('pf-bar').style.setProperty('--width', Math.min((data.profit_factor || 0) / 2 * 100, 100) + '%');
+            document.getElementById('sh-bar').style.setProperty('--width', Math.min((data.sharpe || 0) / 3 * 100, 100) + '%');
+            document.getElementById('ret-bar').style.setProperty('--width', Math.min((data.return_pct || 0) / 100 * 100, 100) + '%');
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('fr-FR');
+            document.getElementById('time').textContent = timeStr;
+            document.getElementById('sync').textContent = timeStr;
+        }
+
+        // Initial load
+        loadDashboard();
+        setInterval(loadDashboard, 5000);
+    </script>
+</body>
+</html>
