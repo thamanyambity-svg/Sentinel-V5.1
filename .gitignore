@@ -51,8 +51,10 @@ bot/journal/*.jsonl
 
 # Runtime state (process locks, pids, transient state)
 *.pid
-*.lock
 .bot_main_*.pid
+bot.lock
+sentinel_v5.lock
+# NB: package manager lockfiles (bun.lock, package-lock.json, yarn.lock) are kept
 bot_state.json
 ratchet_state.json
 production.pid
