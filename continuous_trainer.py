@@ -126,7 +126,7 @@ class ContinuousTrainer:
                 log.warning("⚠️ Pas assez de data pour l'entraînement (min 2).")
                 return
 
-            split = int(len(rows) * 0.8)
+            split = int(len(rows) * 0.7)
             if split == 0: split = 1
             train_rows = rows[:split]
             val_rows = rows[split:]
@@ -140,20 +140,32 @@ class ContinuousTrainer:
                 return
 
             new_auc = metrics.get("val", {}).get("auc", 0)
+            new_f1  = metrics.get("val", {}).get("f1", 0)
             old_meta = self._load_model_metadata()
             old_auc = old_meta.get("auc", 0)
+            old_n_trades = old_meta.get("n_trades", 0)
             
-            if new_auc >= old_auc or old_auc == 0:
-                self._deploy_model(trainer.model, metrics, n_trades)
+            # Score composite : priorise F1 quand AUC est peu fiable (peu de données)
+            new_score = new_f1 * 0.6 + new_auc * 0.4
+            old_score = old_meta.get("deploy_score", old_auc)
+            
+            # Anti-overfitting : un modèle sur plus de données est plus fiable
+            if old_n_trades > 0 and n_trades >= old_n_trades * 2 and new_f1 >= 0.35:
+                log.info("🔄 Ancien modèle (%d trades) → remplacé par modèle sur %d trades (F1=%.3f, AUC=%.3f)",
+                         old_n_trades, n_trades, new_f1, new_auc)
+                self._deploy_model(trainer.model, metrics, n_trades, new_score)
                 self._last_trained_count = n_trades
-                log.info("✅ Nouveau modèle déployé | AUC: %.3f (vs %.3f)", new_auc, old_auc)
+            elif new_score >= old_score or old_score == 0:
+                self._deploy_model(trainer.model, metrics, n_trades, new_score)
+                self._last_trained_count = n_trades
+                log.info("✅ Nouveau modèle déployé | F1: %.3f AUC: %.3f Score: %.3f (vs %.3f)", new_f1, new_auc, new_score, old_score)
             else:
-                log.info("⏭ Nouveau modèle moins performant (AUC %.3f < %.3f) | Rejeté.", new_auc, old_auc)
+                log.info("⏭ Rejeté | F1: %.3f AUC: %.3f Score: %.3f < %.3f", new_f1, new_auc, new_score, old_score)
                 
         except Exception as e:
             log.error("Critical error in training: %s", e)
 
-    def _deploy_model(self, model, metrics, n_trades):
+    def _deploy_model(self, model, metrics, n_trades, deploy_score=0):
         if MODEL_PATH.exists():
             try:
                 ts = datetime.now().strftime("%Y%m%d_%H%M")
@@ -164,6 +176,8 @@ class ContinuousTrainer:
         data = {
             "model": model,
             "auc": metrics.get("val", {}).get("auc", 0),
+            "f1": metrics.get("val", {}).get("f1", 0),
+            "deploy_score": deploy_score,
             "n_trades": n_trades,
             "trained_at": datetime.now(timezone.utc).isoformat(),
             "threshold": metrics.get("threshold", 0.58),

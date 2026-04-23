@@ -13,7 +13,15 @@ import time
 import logging
 import os
 import threading
-from datetime import datetime, UTC
+import datetime as lib_dt
+from datetime import datetime
+try:
+    from datetime import UTC
+except ImportError:
+    UTC = lib_dt.timezone.utc
+
+
+
 from pathlib import Path
 from typing import Dict, Optional
 from dotenv import load_dotenv

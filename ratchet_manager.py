@@ -323,6 +323,7 @@ class RatchetManager:
         """Valeur approximative d'un pip pour 1 lot."""
         pip_values = {
             "XAUUSD": 1.00 * volume,     # Or: $1/pip/lot
+            "GOLD": 1.00 * volume,       # Or XM: $1/pip/lot
             "EURUSD": 10.0 * volume,     # Majeurs: $10/pip/lot
             "GBPUSD": 10.0 * volume,
             "AUDUSD": 10.0 * volume,

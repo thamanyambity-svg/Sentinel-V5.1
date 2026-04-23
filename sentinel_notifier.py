@@ -26,7 +26,7 @@ PNL_UPDATE_INTERVAL = 60  # Mise à jour P&L toutes les 60 secondes
 SIGNIFICANT_PNL_THRESHOLD = 5.0  # Alerte si P&L > $5 (gain ou perte)
 
 MARKET_TYPES = {
-    "XAUUSD": "🥇 OR (Gold)", "XAGUSD": "🥈 Argent", 
+    "XAUUSD": "🥇 OR (Gold)", "GOLD": "🥇 OR (Gold)", "XAGUSD": "🥈 Argent", 
     "EURUSD": "💶 Forex EUR/USD", "GBPUSD": "💷 Forex GBP/USD",
     "USDJPY": "💴 Forex USD/JPY", "USDCHF": "🏦 Forex USD/CHF",
     "AUDUSD": "🦘 Forex AUD/USD", "NZDUSD": "🥝 Forex NZD/USD",
@@ -46,6 +46,35 @@ class GlobalMonitor:
         self.start_time = datetime.now()
         self.last_pnl_update = 0
         self.last_pnl_values = {}  # ticket -> last notified pnl
+        self.active_account = None
+        self.active_server = None
+        self.active_broker = None
+        self.withdrawal_alert_sent = set()  # tickets déjà alertés pour retrait
+        self.global_withdrawal_alerted = False  # alerte retrait global envoyée
+        self.WITHDRAWAL_TRADE_PCT = 200  # % du volume pour alerte retrait par trade
+        self.WITHDRAWAL_GLOBAL_PCT = 100  # % du dépôt initial pour alerte retrait global
+
+    def detect_active_account(self):
+        """Lit status.json pour détecter le compte MT5 actif."""
+        data = self.read_status()
+        if not data:
+            return None, None, None
+        account = data.get('account', os.getenv('MT5_LOGIN', '?'))
+        server = data.get('server', os.getenv('MT5_SERVER', '?'))
+        # Détection du broker
+        srv = str(server).lower()
+        if 'xmglobal' in srv or 'xm' in srv:
+            broker = 'XM Global'
+        elif 'deriv' in srv:
+            broker = 'Deriv'
+        elif 'exness' in srv:
+            broker = 'Exness'
+        else:
+            broker = server
+        self.active_account = str(account)
+        self.active_server = server
+        self.active_broker = broker
+        return account, server, broker
 
     async def send_all(self, message):
         """Envoie à Telegram et Discord (via requests synchrone pour fiabilité SSL macOS)."""
@@ -105,8 +134,10 @@ class GlobalMonitor:
             bal = data.get('balance', 0) if data else 0
             eq = data.get('equity', 0) if data else 0
             nb_pos = len(data.get('positions', [])) if data else 0
+            account, server, broker = self.detect_active_account()
             await self.send_all(
-                f"🟢 **SENTINEL ACTIVÉ** — Compte `101573422`\n"
+                f"🟢 **SENTINEL ACTIVÉ** — {broker} `{account}`\n"
+                f"🌐 Serveur: `{server}`\n"
                 f"🏦 Solde: `${bal:.2f}` | Équité: `${eq:.2f}`\n"
                 f"📊 Positions ouvertes: {nb_pos}\n"
                 f"🔔 Notifications: ouverture, clôture, P&L, alertes"
@@ -220,6 +251,56 @@ class GlobalMonitor:
                                    f"🛑 Surveillez cette position !")
                         await self.send_all(msg)
                     self.last_pnl_values[ticket] = pnl
+
+                # 5. ALERTE RETRAIT — Profit par trade ≥ 200% du volume engagé
+                for ticket, pos in positions.items():
+                    if ticket in self.withdrawal_alert_sent:
+                        continue
+                    pnl = pos.get('pnl', pos.get('profit', 0))
+                    lot = pos.get('lot', pos.get('volume', 0.01))
+                    sym = pos.get('sym', pos.get('symbol', '?'))
+                    # Estimation marge engagée selon le symbole
+                    if sym in ('XAUUSD', 'GOLD'):
+                        margin_used = lot * 4675 / 1000  # levier 1:1000
+                    else:
+                        margin_used = lot * 100  # estimation par défaut
+                    threshold = margin_used * (self.WITHDRAWAL_TRADE_PCT / 100)
+                    if pnl >= threshold and threshold > 0:
+                        self.withdrawal_alert_sent.add(ticket)
+                        pct_gain = (pnl / margin_used * 100) if margin_used > 0 else 0
+                        mtype = get_market_type(sym)
+                        msg = (f"💎 **ALERTE RETRAIT POSSIBLE**\n"
+                               f"━━━━━━━━━━━━━━━━━━\n"
+                               f"📊 {mtype} — {pos.get('type', '?')}\n"
+                               f"💰 Profit: `{pnl:+.2f}$` ({pct_gain:.0f}% du volume)\n"
+                               f"📦 Volume: `{lot:.2f}` lots | Marge: `${margin_used:.2f}`\n"
+                               f"━━━━━━━━━━━━━━━━━━\n"
+                               f"✅ Ce trade a généré **{self.WITHDRAWAL_TRADE_PCT}%+** de sa marge\n"
+                               f"💸 Vous pouvez envisager un retrait partiel\n"
+                               f"🔒 Pensez à sécuriser : TP partiel ou trailing stop")
+                        await self.send_all(msg)
+
+                # 6. ALERTE RETRAIT GLOBAL — Profit total ≥ 100% du dépôt initial
+                if self.initial_balance and self.initial_balance > 0:
+                    profit_total = current_balance - self.initial_balance
+                    pct_total = (profit_total / self.initial_balance) * 100
+                    if pct_total >= self.WITHDRAWAL_GLOBAL_PCT and not self.global_withdrawal_alerted:
+                        self.global_withdrawal_alerted = True
+                        withdrawable = profit_total * 0.5  # suggestion: retirer 50% du profit
+                        msg = (f"🏆 **OBJECTIF RETRAIT ATTEINT !**\n"
+                               f"━━━━━━━━━━━━━━━━━━\n"
+                               f"📈 Profit total: `{profit_total:+.2f}$` (+{pct_total:.0f}%)\n"
+                               f"🏦 Dépôt initial: `${self.initial_balance:.2f}`\n"
+                               f"💰 Solde actuel: `${current_balance:.2f}`\n"
+                               f"━━━━━━━━━━━━━━━━━━\n"
+                               f"💸 Retrait suggéré: `${withdrawable:.2f}` (50% du profit)\n"
+                               f"🔄 Capital restant: `${current_balance - withdrawable:.2f}`\n"
+                               f"━━━━━━━━━━━━━━━━━━\n"
+                               f"⚠️ Retrait = sur le site du broker\n"
+                               f"✅ Sécurisez vos gains régulièrement !")
+                        await self.send_all(msg)
+                    elif pct_total < (self.WITHDRAWAL_GLOBAL_PCT * 0.5):
+                        self.global_withdrawal_alerted = False  # reset si le profit retombe
 
                 self.last_positions = positions
                 # Toujours mettre à jour la balance quand pas de changement de position

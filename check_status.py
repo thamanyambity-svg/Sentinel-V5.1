@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-TOKEN = os.getenv("DERIV_TOKEN")
+TOKEN = os.getenv("DERIV_API_TOKEN")
 APP_ID = os.getenv("DERIV_APP_ID")
 
 async def check_with_retry(func, max_retries=3):
