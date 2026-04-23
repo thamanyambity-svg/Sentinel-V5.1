@@ -17,10 +17,13 @@
 //|   V7.17    : Strategie Momentum + DetectRegime assoupli ADX fort |
 //|   V7.18    : News filter + Fix circuit-breaker + 07h/13h off + Momentum EURUSD off |
 //|   V7.18b   : Fix definitif circuit-breaker boucle (lotReduceTriggered flag)        |
+//|   V7.20    : Trailing GOLD-TIGHT (ATR*0.10 activation, *0.07 step)               |
+//|   V7.21    : ApplyManualProtection_V7 (SL/TP auto trades manuels)                |
+//|   V7.22    : OVERNIGHT HEDGE GOLD (3 dominants + 2 hedges @20h55 GMT+0)          |
 //+------------------------------------------------------------------+
 
 #property copyright "Ambity — Pro Build V7.00-Deriv"
-#property version   "7.18"
+#property version   "7.22"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -159,6 +162,21 @@ input int    Gold_MaxConsecLosses   = 2;     // Nombre de pertes consécutives a
 input int    Gold_CooldownMinutes   = 30;    // Durée du cooldown en minutes
 input double Gold_ADX_Min           = 30.0;  // ADX minimum pour XAUUSD (plus strict que global)
 
+input group "=== OVERNIGHT HEDGE GOLD (V7.22) ==="
+input bool   Enable_EOD_Hedge        = true;  // Activer la strategie Overnight
+input int    EOD_Hour                = 20;    // Heure declenchement (broker GMT+0)
+input int    EOD_Minute              = 55;    // Minute declenchement
+input double EOD_Dominant_Lot        = 0.01;  // Lot par trade dominant
+input double EOD_Hedge_Lot           = 0.01;  // Lot par trade hedge
+input int    EOD_Dominant_Count      = 3;     // Nombre de trades dominants
+input int    EOD_Hedge_Count         = 2;     // Nombre de trades hedge (sens oppose)
+input double EOD_Dominant_SL_ATR     = 1.5;   // SL dominants = N * ATR
+input double EOD_Dominant_TP_ATR     = 4.0;   // TP dominants = N * ATR
+input double EOD_Hedge_SL_ATR        = 0.3;   // SL hedges    = N * ATR (ultra serre)
+input double EOD_Hedge_TP_ATR        = 0.5;   // TP hedges    = N * ATR
+input int    EOD_MagicOffset         = 100;   // Magic = MagicNumber + offset (isolation)
+input bool   EOD_Alert_Popup         = true;  // Pop-up MT5 a l'execution
+
 input group "=== INSTRUMENTS ==="
 input bool   Trade_GOLD     = true;
 input bool   Trade_EURUSD   = true;
@@ -250,6 +268,13 @@ datetime     lastTickExport    = 0;
 TaskRule     rules[3];
 StrategyDef  strategies[3];
 
+// V7.22 — Overnight Hedge state
+bool     eod_hedge_triggered_today = false;
+datetime eod_last_trigger_day      = 0;
+int      eod_handle_ema_fast_h1    = INVALID_HANDLE;
+int      eod_handle_ema_slow_h1    = INVALID_HANDLE;
+string   eod_gold_symbol           = ""; // "XAUUSD" ou "GOLD" selon broker
+
 // BB Diagnostic counters (V7.11)
 int bb_block_count_buy[MAX_SYMBOLS];
 int bb_block_count_sell[MAX_SYMBOLS];
@@ -303,6 +328,8 @@ bool IsGlobalTradingAllowed();
 bool IsNewsBlocked(string symbol);
 void ApplyPreNewsSecure();
 void ApplyManualProtection_V7();
+void ExecuteOvernightHedge_V7();
+int  GetGoldSymbolIdx();
 
 //=============================================================
 // EXPERT HANDLERS
@@ -434,6 +461,9 @@ int OnInit() {
 void OnDeinit(const int reason) {
     EventKillTimer();
     for(int i = 0; i < symbolCount; i++) ReleaseSymbolIndicators(i);
+    // V7.22 — liberer handles EOD Hedge
+    if(eod_handle_ema_fast_h1 != INVALID_HANDLE) IndicatorRelease(eod_handle_ema_fast_h1);
+    if(eod_handle_ema_slow_h1 != INVALID_HANDLE) IndicatorRelease(eod_handle_ema_slow_h1);
 }
 
 void OnTimer() {
@@ -442,6 +472,7 @@ void OnTimer() {
     UpdateMFE_MAE();
     TrackLiveEvolution_V7();
     CheckForExits_V7();
+    ExecuteOvernightHedge_V7(); // V7.22 — 3 dominants + 2 hedges @ EOD_Hour:EOD_Minute
     ProcessPythonCommands();
     ProcessActionPlan(); // <--- AJOUT PONT AI V5
     ExportStatus_V7();
@@ -792,6 +823,155 @@ void ApplyManualProtection_V7() {
                      " TP=" + DoubleToString(newTP, digits));
         }
     }
+}
+
+//+------------------------------------------------------------------+
+//| V7.22 — OVERNIGHT HEDGE GOLD                                     |
+//| Declenche a EOD_Hour:EOD_Minute broker GMT+0 (1 fois par jour)   |
+//| Direction : EMA_fast > EMA_slow sur H1 GOLD → BUY dominants      |
+//|             EMA_fast < EMA_slow sur H1 GOLD → SELL dominants     |
+//| 3 dominants (TP=4xATR, SL=1.5xATR) + 2 hedges sens oppose        |
+//|                            (TP=0.5xATR, SL=0.3xATR)              |
+//| Magic distinct = MagicNumber + EOD_MagicOffset (isole du reste)  |
+//+------------------------------------------------------------------+
+int GetGoldSymbolIdx() {
+    for(int i = 0; i < symbolCount; i++) {
+        string s = symbols[i].symbol;
+        if(s == "XAUUSD" || s == "GOLD" || s == "XAUUSDm") return i;
+    }
+    return -1;
+}
+
+void ExecuteOvernightHedge_V7() {
+    if(!Enable_EOD_Hedge)              return;
+    if(eod_hedge_triggered_today)      return;
+
+    // Fenetre de declenchement : [EOD_Hour:EOD_Minute ; +4 min]
+    MqlDateTime dt;
+    TimeCurrent(dt);
+    int nowMin   = dt.hour * 60 + dt.min;
+    int triggMin = EOD_Hour * 60 + EOD_Minute;
+    if(nowMin < triggMin || nowMin > triggMin + 4) return;
+
+    // Localisation du symbole GOLD dispo sur le broker
+    int gidx = GetGoldSymbolIdx();
+    if(gidx < 0) {
+        Log.Warn("EOD_HEDGE", "GOLD/XAUUSD introuvable, skip");
+        eod_hedge_triggered_today = true; // evite spam
+        return;
+    }
+    string sym = symbols[gidx].symbol;
+    if(!SymbolSelect(sym, true)) { Log.Warn("EOD_HEDGE", "SymbolSelect KO " + sym); return; }
+
+    // Lazy-init des handles EMA H1 (fast/slow) dedies
+    if(eod_handle_ema_fast_h1 == INVALID_HANDLE || eod_gold_symbol != sym) {
+        if(eod_handle_ema_fast_h1 != INVALID_HANDLE) IndicatorRelease(eod_handle_ema_fast_h1);
+        if(eod_handle_ema_slow_h1 != INVALID_HANDLE) IndicatorRelease(eod_handle_ema_slow_h1);
+        eod_handle_ema_fast_h1 = iMA(sym, PERIOD_H1, EMA_Fast, 0, MODE_EMA, PRICE_CLOSE);
+        eod_handle_ema_slow_h1 = iMA(sym, PERIOD_H1, EMA_Slow, 0, MODE_EMA, PRICE_CLOSE);
+        eod_gold_symbol        = sym;
+        if(eod_handle_ema_fast_h1 == INVALID_HANDLE ||
+           eod_handle_ema_slow_h1 == INVALID_HANDLE) {
+            Log.Warn("EOD_HEDGE", "iMA H1 init KO");
+            return;
+        }
+    }
+
+    double efBuf[1], esBuf[1];
+    if(CopyBuffer(eod_handle_ema_fast_h1, 0, 0, 1, efBuf) <= 0 ||
+       CopyBuffer(eod_handle_ema_slow_h1, 0, 0, 1, esBuf) <= 0) {
+        Log.Warn("EOD_HEDGE", "CopyBuffer EMA H1 KO");
+        return;
+    }
+    double emaFast = efBuf[0];
+    double emaSlow = esBuf[0];
+
+    // ATR dispo via UpdateIndicators appele en OnTimer
+    double atr = symbols[gidx].lastATR;
+    if(atr <= 0.0) {
+        Log.Warn("EOD_HEDGE", "ATR GOLD non dispo, skip");
+        return;
+    }
+
+    int    dominantType = (emaFast > emaSlow) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+    int    hedgeType    = (dominantType == ORDER_TYPE_BUY)    ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+    string dominantLbl  = (dominantType == ORDER_TYPE_BUY)    ? "BUY"  : "SELL";
+    string hedgeLbl     = (hedgeType    == ORDER_TYPE_BUY)    ? "BUY"  : "SELL";
+
+    double point  = SymbolInfoDouble(sym, SYMBOL_POINT);
+    int    digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+    double stopLv = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * point;
+    double buffer = StopLevelBuffer_Pts * point;
+
+    // Switch magic temporairement pour isolation
+    ulong mainMagic  = (ulong)MagicNumber;
+    ulong hedgeMagic = (ulong)(MagicNumber + EOD_MagicOffset);
+    trade.SetExpertMagicNumber(hedgeMagic);
+
+    int placed = 0;
+
+    // --- 3 DOMINANTS ---
+    double slDistDom = MathMax(atr * EOD_Dominant_SL_ATR, stopLv + buffer);
+    double tpDistDom = MathMax(atr * EOD_Dominant_TP_ATR, stopLv + buffer);
+    for(int k = 0; k < EOD_Dominant_Count; k++) {
+        double ask = SymbolInfoDouble(sym, SYMBOL_ASK);
+        double bid = SymbolInfoDouble(sym, SYMBOL_BID);
+        double price = (dominantType == ORDER_TYPE_BUY) ? ask : bid;
+        double sl, tp;
+        if(dominantType == ORDER_TYPE_BUY) {
+            sl = NormalizeDouble(price - slDistDom, digits);
+            tp = NormalizeDouble(price + tpDistDom, digits);
+        } else {
+            sl = NormalizeDouble(price + slDistDom, digits);
+            tp = NormalizeDouble(price - tpDistDom, digits);
+        }
+        double lot = NormalizeVolume_V7(sym, EOD_Dominant_Lot);
+        bool ok = (dominantType == ORDER_TYPE_BUY)
+                    ? trade.Buy (lot, sym, price, sl, tp, "EOD_DOM " + IntegerToString(k+1))
+                    : trade.Sell(lot, sym, price, sl, tp, "EOD_DOM " + IntegerToString(k+1));
+        if(ok) placed++;
+        else   Log.Warn("EOD_HEDGE", "DOM " + dominantLbl + " #" + IntegerToString(k+1) +
+                        " KO code=" + IntegerToString(trade.ResultRetcode()));
+    }
+
+    // --- 2 HEDGES (sens oppose, SL/TP ultra serres) ---
+    double slDistHdg = MathMax(atr * EOD_Hedge_SL_ATR, stopLv + buffer);
+    double tpDistHdg = MathMax(atr * EOD_Hedge_TP_ATR, stopLv + buffer);
+    for(int k = 0; k < EOD_Hedge_Count; k++) {
+        double ask = SymbolInfoDouble(sym, SYMBOL_ASK);
+        double bid = SymbolInfoDouble(sym, SYMBOL_BID);
+        double price = (hedgeType == ORDER_TYPE_BUY) ? ask : bid;
+        double sl, tp;
+        if(hedgeType == ORDER_TYPE_BUY) {
+            sl = NormalizeDouble(price - slDistHdg, digits);
+            tp = NormalizeDouble(price + tpDistHdg, digits);
+        } else {
+            sl = NormalizeDouble(price + slDistHdg, digits);
+            tp = NormalizeDouble(price - tpDistHdg, digits);
+        }
+        double lot = NormalizeVolume_V7(sym, EOD_Hedge_Lot);
+        bool ok = (hedgeType == ORDER_TYPE_BUY)
+                    ? trade.Buy (lot, sym, price, sl, tp, "EOD_HDG " + IntegerToString(k+1))
+                    : trade.Sell(lot, sym, price, sl, tp, "EOD_HDG " + IntegerToString(k+1));
+        if(ok) placed++;
+        else   Log.Warn("EOD_HEDGE", "HDG " + hedgeLbl + " #" + IntegerToString(k+1) +
+                        " KO code=" + IntegerToString(trade.ResultRetcode()));
+    }
+
+    // Restaurer magic EA principal
+    trade.SetExpertMagicNumber(mainMagic);
+
+    eod_hedge_triggered_today = true;
+
+    string summary = "EOD Hedge GOLD " + sym +
+                     " | dir=" + dominantLbl +
+                     " | placed=" + IntegerToString(placed) +
+                     "/" + IntegerToString(EOD_Dominant_Count + EOD_Hedge_Count) +
+                     " | ATR=" + DoubleToString(atr, digits) +
+                     " | magic=" + IntegerToString((int)hedgeMagic);
+    Log.Info("EOD_HEDGE", summary);
+
+    if(EOD_Alert_Popup) Alert("[V7.22 EOD_HEDGE] " + summary);
 }
 
 //+------------------------------------------------------------------+
@@ -1182,6 +1362,9 @@ void CheckDailyReset_V7() {
         dailyTradeCount   = 0;
         dailyCutTriggered = false;
         lastResetDay      = start;
+        // V7.22 — reset Overnight Hedge pour la nouvelle journee
+        eod_hedge_triggered_today = false;
+        eod_last_trigger_day      = start;
         if(Rule_ResetOnNewDay) { tradingEnabled = true; manualPause = false; lotReduceTriggered = false; }
         Log.Info("RESET", "Nouveau jour. Balance: " + DoubleToString(dailyStartBalance, 2));
     }

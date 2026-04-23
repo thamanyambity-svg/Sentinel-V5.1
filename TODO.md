@@ -7,8 +7,9 @@
 
 ## 1. EA Deployment (V7.x Live)
 
-- [ ] Compiler `Aladdin_Pro_V7_Live_DEPLOYED.mq5` (V7.21)
+- [ ] Compiler `Aladdin_Pro_V7_Live_DEPLOYED.mq5` (V7.22)
 - [ ] Tester OnInit/OnTimer
+- [ ] **Valider Overnight Hedge (V7.22)** : vérifier pop-up + 5 ordres à 20h55 GMT+0, magic = MagicNumber+100
 - [ ] GOLD backtest Deriv
 - [ ] Deploy LIVE et vérifier status.json
 
