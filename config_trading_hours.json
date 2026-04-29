@@ -1,0 +1,45 @@
+{
+  "markets": {
+    "EURUSD": {
+      "name": "EUR/USD",
+      "sessions": [
+        {"name": "Londres", "open": "08:00", "close": "17:00"},
+        {"name": "New York", "open": "13:00", "close": "22:00"}
+      ],
+      "active_overlap": "13:00-17:00"
+    },
+    "GBPUSD": {
+      "name": "GBP/USD", 
+      "sessions": [
+        {"name": "Londres", "open": "08:00", "close": "17:00"},
+        {"name": "New York", "open": "13:00", "close": "22:00"}
+      ],
+      "active_overlap": "13:00-17:00"
+    },
+    "USDJPY": {
+      "name": "USD/JPY",
+      "sessions": [
+        {"name": "Asie", "open": "23:00", "close": "08:00"},
+        {"name": "Londres", "open": "08:00", "close": "17:00"}
+      ],
+      "active_overlap": "08:00-09:00"
+    },
+    "AUDUSD": {
+      "name": "AUD/USD",
+      "sessions": [
+        {"name": "Asie", "open": "23:00", "close": "08:00"},
+        {"name": "Londres", "open": "08:00", "close": "17:00"}
+      ],
+      "active_overlap": "23:00-01:00"
+    },
+    "USDCAD": {
+      "name": "USD/CAD",
+      "sessions": [
+        {"name": "Londres", "open": "08:00", "close": "17:00"},
+        {"name": "New York", "open": "13:00", "close": "22:00"}
+      ],
+      "active_overlap": "13:00-17:00"
+    }
+  },
+  "timezone": "GMT"
+}

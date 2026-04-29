@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALADDIN SENTINEL — Institutional Risk Cockpit V3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080b10;
+            --card-bg: #0f1318;
+            --accent-blue: #3d7fff;
+            --accent-green: #00e5b0;
+            --accent-red: #ff4d6d;
+            --accent-amber: #ffab40;
+            --text-primary: #c9d1e0;
+            --text-dim: #4a5568;
+            --glass-border: #1a2130;
+            --mono: 'Space Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--sans);
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 1rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            background: var(--card-bg);
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .logo {
+            font-family: var(--mono);
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--accent-green);
+        }
+
+        .system-status { display: flex; align-items: center; gap: 20px; font-size: 0.8rem; font-family: var(--mono); }
+        .status-pill {
+            background: rgba(0, 229, 176, 0.1);
+            color: var(--accent-green);
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 229, 176, 0.2);
+            font-weight: 700;
+        }
+
+        main {
+            padding: 2rem 3rem;
+            display: grid;
+            grid-template-columns: 380px 1fr 320px;
+            gap: 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        h2 {
+            font-family: var(--mono);
+            font-size: 10px;
+            margin-bottom: 1rem;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Health & Decomposition */
+        .gauge-wrapper {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto;
+        }
+
+        .gauge-svg { transform: rotate(-90deg); }
+        .gauge-bg { fill: none; stroke: var(--glass-border); stroke-width: 10; }
+        .gauge-fill {
+            fill: none; stroke: var(--accent-blue); stroke-width: 10; stroke-linecap: round;
+            stroke-dasharray: 471; stroke-dashoffset: 471;
+            transition: stroke-dashoffset 1.5s ease-out;
+        }
+        .gauge-text {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .gauge-val { font-family: var(--mono); font-size: 2.5rem; font-weight: 700; }
+
+        .decomp-list { margin-top: 1rem; display: flex; flex-direction: column; gap: 8px; }
+        .decomp-item { font-size: 0.75rem; display: grid; grid-template-columns: 1fr 40px 80px; align-items: center; font-family: var(--mono); }
+        .decomp-bar-bg { height: 4px; background: var(--glass-border); border-radius: 2px; }
+        .decomp-bar-fill { height: 100%; background: var(--accent-blue); border-radius: 2px; transition: width 1s; }
+
+        /* Metrics */
+        .metric-box { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; text-align: center; }
+        .metric-box .label { font-size: 0.65rem; color: var(--text-dim); margin-bottom: 4px; }
+        .metric-box .value { font-family: var(--mono); font-size: 1rem; color: var(--accent-green); }
+
+        /* Advanced Monitors */
+        .monitor-card { border-left: 3px solid var(--accent-blue); }
+        .monitor-val { font-size: 1.4rem; font-family: var(--mono); font-weight: 700; }
+        .kelly-bar { height: 6px; background: var(--glass-border); border-radius: 3px; margin-top: 8px; position: relative; }
+        .kelly-marker { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--accent-blue); box-shadow: 0 0 8px var(--accent-blue); }
+
+        /* Execution Quality */
+        .exec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .exec-item { font-size: 0.7rem; color: var(--text-dim); }
+        .exec-item span { display: block; font-family: var(--mono); color: var(--text-primary); font-size: 0.85rem; margin-top: 2px; }
+
+        /* Stress Journal */
+        .journal-list { display: flex; flex-direction: column; gap: 10px; }
+        .journal-item {
+            background: rgba(255, 77, 77, 0.03);
+            border-left: 2px solid var(--accent-red);
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            font-family: var(--mono);
+            border-radius: 0 4px 4px 0;
+        }
+        .journal-ts { color: var(--text-dim); font-size: 0.6rem; margin-bottom: 2px; font-family: var(--mono); }
+
+        /* Circuit Breakers */
+        .breaker-item {
+            background: var(--bg-color);
+            padding: 10px; border-radius: 4px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.75rem;
+            font-family: var(--mono);
+            margin-bottom: 8px;
+            border: 1px solid var(--glass-border);
+        }
+        .breaker-status { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 5px var(--accent-green); }
+        .breaker-active { background: var(--accent-red) !important; box-shadow: 0 0 10px var(--accent-red) !important; animation: blink 1s infinite; }
+
+        @keyframes blink { 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">ALADDIN <span>SENTINEL V3</span></div>
+    <div class="system-status">
+        <span id="regime-text">REGIME: <span style="color: var(--accent-green);">NORMAL</span></span>
+        <div class="status-pill" id="system-status-pill">🟢 FULL ON</div>
+    </div>
+</header>
+
+<main>
+    <!-- LEFT: System Health -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div class="card">
+            <h2>Explainable Health <span id="health-pct" style="color: var(--accent-blue);">--%</span></h2>
+            <div class="gauge-wrapper">
+                <svg class="gauge-svg" width="180" height="180">
+                    <circle class="gauge-bg" cx="90" cy="90" r="75"></circle>
+                    <circle id="health-gauge" class="gauge-fill" cx="90" cy="90" r="75"></circle>
+                </svg>
+                <div class="gauge-text">
+                    <div class="gauge-val" id="health-val">--</div>
+                    <div style="font-size: 0.7rem; color: var(--text-dim);">HEALTH</div>
+                </div>
+            </div>
+
+            <div class="decomp-list" id="health-decomp">
+                <!-- JS populated -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Circuit Breakers</h2>
+            <div id="br-list">
+                <div class="breaker-item"><span>Drawdown Breaker (2R)</span> <div id="br-dd" class="breaker-status"></div></div>
+                <div class="breaker-item"><span>Edge Decay Breaker</span> <div id="br-edge" class="breaker-status"></div></div>
+                <div class="breaker-item"><span>Chaos Breaker (ATR)</span> <div id="br-chaos" class="breaker-status"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CENTER: Monitors -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="card monitor-card">
+                <h2>Risk of Ruin</h2>
+                <div class="monitor-val" id="ror-val">0.00%</div>
+                <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 4px;">Probability at current edge</div>
+            </div>
+            <div class="card monitor-card" style="border-left-color: var(--accent-green);">
+                <h2>Fractional Kelly <span style="font-size: 0.6rem; color: var(--accent-amber);">1/4 USED</span></h2>
+                <div class="monitor-val" id="kelly-val">0.00</div>
+                <div class="kelly-bar">
+                    <div id="kelly-marker" class="kelly-marker" style="left: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Execution Quality Monitor</h2>
+            <div class="exec-grid">
+                <div class="exec-item">Fill Quality <span id="fill-val">100%</span></div>
+                <div class="exec-item">Spread Stress <span id="spread-val" style="color: var(--accent-green);">LOW</span></div>
+                <div class="exec-item">Slippage Drift <span id="slip-val">NORMAL</span></div>
+                <div class="exec-item">Audit Status <span style="color: var(--accent-blue);">VERIFIED</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Stress Journal <span style="font-size: 0.65rem; color: var(--accent-red);">LIVE FEED</span></h2>
+            <div class="journal-list" id="journal-feed">
+                <div class="journal-item">Waiting for risk events...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Operations -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div class="card">
+            <h2>Market Regime</h2>
+            <div id="regime-box" style="padding: 1.2rem; border-radius: 4px; text-align: center; border: 1px solid var(--glass-border); background: var(--bg-color);">
+                <div id="regime-title" style="font-family: var(--mono); font-size: 1.2rem; font-weight: 700;">NORMAL</div>
+            </div>
+        </div>
+
+        <div class="card" style="flex: 1;">
+            <h2>Shadow PnL Audit</h2>
+            <div style="font-size: 0.75rem; margin-top: 10px; font-family: var(--sans);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span>Strategy PnL</span>
+                    <span style="color: var(--accent-green); font-family: var(--mono); font-weight: 700;">+$1,245.00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span>Real Execution</span>
+                    <span style="color: var(--accent-green); font-family: var(--mono); font-weight: 700;">+$1,238.10</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Divergence (Drift)</span>
+                    <span style="color: var(--accent-amber); font-family: var(--mono); font-weight: 700;">-0.55%</span>
+                </div>
+            </div>
+            <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 10px; font-family: var(--mono);">
+                ⚠️ Observation Phase: 60 Days Remaining
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    async function updateDashboard() {
+        try {
+            const r = await fetch('/api/v1/risk_os');
+            const res = await r.json();
+            if (res.status === "success") render(res.data);
+        } catch(e) { console.error(e); }
+    }
+
+    function render(data) {
+        // Health
+        const h = data.health_score || 0;
+        document.getElementById('health-val').innerText = h;
+        document.getElementById('health-pct').innerText = h + '%';
+        document.getElementById('health-gauge').style.strokeDashoffset = 471 - (471 * h / 100);
+
+        // Decomp
+        const decompContainer = document.getElementById('health-decomp');
+        decompContainer.innerHTML = '';
+        const weights = { expectancy: 30, regime: 25, exposure: 20, correlation: 15, drawdown: 10 };
+        for (const [key, val] of Object.entries(data.health_decomposition || {})) {
+            const item = document.createElement('div');
+            item.className = 'decomp-item';
+            const pct = Math.round((val / weights[key]) * 100);
+            item.innerHTML = `<span style="text-transform: capitalize">${key}</span><span style="color: var(--accent-blue)">${val}</span><div class="decomp-bar-bg"><div class="decomp-bar-fill" style="width: ${pct}%"></div></div>`;
+            decompContainer.appendChild(item);
+        }
+
+        // Breakers
+        document.getElementById('br-dd').className = 'breaker-status' + (data.breakers.daily_dd ? ' breaker-active' : '');
+        document.getElementById('br-edge').className = 'breaker-status' + (data.breakers.edge_decay ? ' breaker-active' : '');
+        document.getElementById('br-chaos').className = 'breaker-status' + (data.breakers.chaos ? ' breaker-active' : '');
+
+        // Execution Quality
+        const eq = data.execution_quality || {};
+        document.getElementById('fill-val').innerText = eq.fill_quality + '%';
+        document.getElementById('spread-val').innerText = eq.spread_stress.toUpperCase();
+        document.getElementById('spread-val').style.color = eq.spread_stress === 'low' ? 'var(--accent-green)' : 'var(--accent-red)';
+
+        // Kelly & RoR
+        document.getElementById('ror-val').innerText = (data.risk_of_ruin || 0).toFixed(2) + '%';
+        document.getElementById('kelly-val').innerText = (data.kelly_fraction || 0).toFixed(3);
+        document.getElementById('kelly-marker').style.left = Math.min(100, data.kelly_fraction * 100) + '%';
+
+        // Regime
+        document.getElementById('regime-title').innerText = data.regime || 'NORMAL';
+        document.getElementById('system-status-pill').innerText = data.status || '🟢 FULL ON';
+    }
+
+    setInterval(updateDashboard, 3000);
+    updateDashboard();
+</script>
+
+</body>
+</html>

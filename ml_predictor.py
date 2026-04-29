@@ -320,6 +320,16 @@ class MLPredictor:
             ticks = [ticks]
 
         signals_out = {}
+        
+        # ── Sentiment Filtering (Fundamental Bias) ───────────────────
+        sentiment_score = 0
+        sentiment_path = Path("gold_sentiment.json")
+        if sentiment_path.exists():
+            try:
+                with open(sentiment_path, encoding="utf-8") as sf:
+                    sdata = json.load(sf)
+                    sentiment_score = float(sdata.get("analysis", {}).get("score", 0))
+            except: pass
 
         # Lire les assets autorisés depuis .env (TRADING_ASSETS)
         allowed_assets = set(
@@ -373,6 +383,15 @@ class MLPredictor:
                     signal = 0   # NO_TRADE
             else:
                 signal = 0
+
+            # ── Decision making based on AI Fundamental Sentiment ─────
+            if sym in ["XAUUSD", "GOLD"]:
+                if sentiment_score <= -7 and signal == 1:
+                    log.warning(f"🚫 BLOCAGE FONDAMENTAL: Sentiment Baissier ({sentiment_score}) bloque BUY Gold")
+                    signal = 0
+                elif sentiment_score >= 7 and signal == -1:
+                    log.warning(f"🚫 BLOCAGE FONDAMENTAL: Sentiment Haussier ({sentiment_score}) bloque SELL Gold")
+                    signal = 0
 
             confidence = ("HIGH"   if proba >= HIGH_CONFIDENCE  else
                           "MED"    if proba >= MIN_CONFIDENCE    else

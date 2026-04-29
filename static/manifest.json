@@ -1,0 +1,21 @@
+{
+  "name": "Sentinel Predator V7",
+  "short_name": "Sentinel",
+  "description": "Système de Trading Institutionnel - Sniper AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f18",
+  "theme_color": "#00e5b0",
+  "icons": [
+    {
+      "src": "/static/alpha_logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/static/alpha_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

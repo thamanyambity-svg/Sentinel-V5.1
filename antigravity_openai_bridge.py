@@ -29,6 +29,16 @@ import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any
+from mt5_context import get_current_mt5_context
+
+# ── Chemin MT5 Common Files (utilisé aussi pour gold_analysis.json) ──
+MT5_COMMON_PATH = os.environ.get(
+    "MT5_PATH",
+    os.path.expanduser(
+        "~/Library/Application Support/net.metaquotes.wine.metatrader5"
+        "/drive_c/users/user/AppData/Roaming/MetaQuotes/Terminal/Common/Files"
+    ),
+)
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -391,6 +401,99 @@ def process_request(data: Dict) -> Dict:
 #  BOUCLE PRINCIPALE
 # ══════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════
+#  TÂCHE A — Lecture gold_analysis.json (spec ANTIGRAVITY_INTEGRATION)
+# ══════════════════════════════════════════════════════════════════
+
+def get_gold_eod_direction() -> Optional[Dict]:
+    """
+    Tâche A — Lit la dernière analyse GOLD et retourne la direction recommandée.
+    À appeler à 20h50 UTC (5 min avant l'exécution MT5).
+    Retourne None si l'analyse est absente ou trop ancienne (> 2h).
+    """
+    base_dir = Path(__file__).parent
+    paths = [
+        base_dir / "gold_analysis.json",
+        Path(MT5_COMMON_PATH) / "gold_analysis.json",
+    ]
+    for p in paths:
+        if p.exists():
+            try:
+                with open(p, encoding="utf-8") as f:
+                    data = json.load(f)
+                # Vérifier que l'analyse est récente (< 2h)
+                age = time.time() - data.get("ts", 0)
+                if age > 7200:
+                    log.warning("[EOD_GOLD] gold_analysis.json trop ancienne (%.1fh) — ignorée", age / 3600)
+                    return None
+                return {
+                    "direction":      data["direction"],
+                    "confidence":     data["confidence"],
+                    "score":          data["score"],
+                    "recommendation": data["recommendation"],
+                }
+            except Exception as e:
+                log.warning("[EOD_GOLD] Erreur lecture gold_analysis.json: %s", e)
+    return None  # Pas d'analyse disponible → laisser le bot décider seul
+
+
+# ══════════════════════════════════════════════════════════════════
+#  TÂCHE C — Logger la décision EOD dans antigravity_bridge.log
+# ══════════════════════════════════════════════════════════════════
+
+def log_eod_decision(eod: Dict, action: str = "VALIDATED") -> None:
+    """
+    Tâche C — Écrit la décision EOD Gold dans antigravity_bridge.log.
+    Format : [2026-04-26 20:50:00] EOD_GOLD | dir=BUY | conf=75.0% | score=+4 | action=VALIDATED
+    """
+    direction  = eod.get("direction", "?")
+    confidence = eod.get("confidence", 0.0)
+    score      = eod.get("score", 0)
+    ts         = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Récupération du compte pour le log
+    ctx = get_current_mt5_context(MT5_COMMON_PATH).refresh()
+    acc_info = f" | acc={ctx['broker']} {ctx['mode']} ({ctx['account']})" if ctx else ""
+
+    line = (
+        f"[{ts}] EOD_GOLD | dir={direction} | "
+        f"conf={confidence:.1f}% | score={score:+d}{acc_info} | action={action}"
+    )
+    log.info(line)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  TÂCHE B — Vérification EOD intégrée à la boucle de surveillance
+# ══════════════════════════════════════════════════════════════════
+
+_eod_checked_today: Optional[str] = None  # date ISO (YYYY-MM-DD)
+
+def _check_eod_gold_window() -> None:
+    """
+    Tâche B — Appelée dans watch_loop() à chaque itération.
+    À 20h50 UTC (fenêtre 20:50→20:54), lit gold_analysis.json et logue la
+    décision. Exécuté une seule fois par jour.
+    """
+    global _eod_checked_today
+    now = datetime.utcnow()
+    today_str = now.strftime("%Y-%m-%d")
+    # Fenêtre 20h50 → 20h54 UTC (5 min avant l'exécution MT5 à 20h55)
+    in_window = (now.hour == 20 and 50 <= now.minute <= 54)
+    if not in_window or _eod_checked_today == today_str:
+        return
+    eod = get_gold_eod_direction()
+    if eod:
+        log_eod_decision(eod, action="VALIDATED")
+        _eod_checked_today = today_str
+        log.info(
+            "[EOD_GOLD] Direction=%s | Confidence=%.1f%% | Score=%+d | %s",
+            eod["direction"], eod["confidence"], eod["score"], eod["recommendation"]
+        )
+    else:
+        log.warning("[EOD_GOLD] Aucune analyse Gold disponible à %s UTC — bot décide seul", now.strftime("%H:%M"))
+        _eod_checked_today = today_str
+
+
 def watch_loop():
     log.info("═══════════════════════════════════════════════")
     log.info("  Aladdin Pro V6 — OpenAI Bridge démarré")
@@ -406,6 +509,9 @@ def watch_loop():
 
     while True:
         try:
+            # Tâche B — Vérification fenêtre EOD Gold (20h50 UTC)
+            _check_eod_gold_window()
+
             if REQUEST_FILE.exists():
                 data = safe_read_json(REQUEST_FILE)
 

@@ -10,18 +10,23 @@ const MOCK_NEWS = [
   { time: "15:15", event: "Industrial Production (MoM)", impact: "MID", forecast: "0.1%", actual: "--", status: "muted" },
   { time: "10:00", event: "Consumer Confidence", impact: "HIGH", forecast: "114.8", actual: "110.9", status: "error" },
 ];
+import { trpc } from "@/lib/trpc";
 
 export default function NewsScreen() {
-  const colors = useColors();
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <HeaderTrading
-        balance={125430.82}
-        equity={127890.15}
-        marginLevel={12.4}
-        marketOpen={true}
-      />
+   const colors = useColors();
+   const { data: tradingData } = trpc.getTradingData.useQuery(undefined, {
+     refetchInterval: 1000,
+   });
+   const account = tradingData?.account;
+ 
+   return (
+     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+       <HeaderTrading
+         balance={account?.balance || 0}
+         equity={account?.equity || 0}
+         marginLevel={account?.marginLevel || 0}
+         marketOpen={account?.marketOpen ?? true}
+       />
 
       <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
         <View>

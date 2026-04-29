@@ -37,7 +37,7 @@ def get_atr_sl_pips(candles: List[Dict], point: float = 0.01, mult: float = ATR_
         return 50
     sl_dist = atr_val * mult
     sl_pips = int(round(sl_dist / point))
-    return max(15, min(120, sl_pips))
+    return max(5, sl_pips) # Minimum safety floor
 
 
 def get_atr_risk_multiplier(candles: List[Dict]) -> float:

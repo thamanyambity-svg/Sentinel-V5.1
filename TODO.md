@@ -1,31 +1,31 @@
-# Aladdin Pro V7 — TODO (Unified)
+# Task Progress: Journal API + Dashboard Redesign → COMPLETION
 
-> Fichier unique consolidé depuis TODO.md + TODO_DASHBOARD.md + TODO_TRAILING_FIX.md (2026-04-23).
-> Items complétés → voir `CHANGELOG.md`.
+**Status: API ✅ | Frontend ⏳ | Tests pending**
 
----
+## Plan Approved & Breakdown [1/6]
+- [x] 0. Create/update master TODO.md (this file)
+- [x] 1. Implement /api/v1/journal in api_server.py (tail journal/audit.log → structured JSON)
+- [x] 2. Test endpoint (curl /api/v1/journal) → ✅ WebSocket /ws/live already broadcasting ticks
+- [ ] 3. Enhance MLDashboard.jsx (React):
+   - [ ] WebSocket live ticks (connect localhost:5000 → update prices/charts)
+   - [ ] Voice commands (Web Speech API)
+   - [ ] Heatmap positions (poll /api/v1/positions)
+- [ ] 4. Style execution feed as timeline (poll /api/v1/journal → layer badges, colors, auto-scroll)
+- [ ] 5. Verify full integration (localhost:5000 → live/voice/heatmap working)
+- [ ] 6. Complete → Update CHANGELOG.md + close task
 
-## 1. EA Deployment (V7.x Live)
+## Quick Test Commands
+```bash
+# Backend
+python api_server.py
 
-- [ ] Compiler `Aladdin_Pro_V7_Live_DEPLOYED.mq5` (V7.22)
-- [ ] Tester OnInit/OnTimer
-- [ ] **Valider Overnight Hedge (V7.22)** : vérifier pop-up + 5 ordres à 20h55 GMT+0, magic = MagicNumber+100
-- [ ] GOLD backtest Deriv
-- [ ] Deploy LIVE et vérifier status.json
+# Frontend test (new tab)
+curl http://localhost:5000/api/v1/positions
+curl http://localhost:5000/api/v1/ticks  
+curl http://localhost:5000/api/v1/journal
 
-## 2. Trailing Stop / Break-Even
+# Full stack
+open http://localhost:5000
+```
 
-- [ ] Monitor logs/status.json après patch GOLD-TIGHT
-- [ ] Ouvrir position OR de validation
-- [ ] Vérifier trailing suit à ~1.50 pts
-- [ ] Test gap protection
-
-## 3. Dashboard (Gold Predator V7)
-
-- [ ] Mobile-first responsivity (stack <640px, hamburger sidebar)
-- [ ] Gold Predator theme (canvas particles BG, 3D tilt cards)
-- [ ] Dark/light toggle + PWA (manifest, SW)
-
-## 4. Bridge & Data
-
-- [ ] Update `ai_bridge.py` pour nouveaux JSON (account_stats.json, macro_bias.json)
+**Design:** Predator gold/black/cyan theme maintained

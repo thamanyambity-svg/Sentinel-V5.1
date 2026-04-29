@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-04-29T14:00:09.440122Z",
+  "ts": 1777471209,
+  "symbol": "XAUUSD",
+  "direction": "NEUTRAL",
+  "score": 0,
+  "confidence": 30,
+  "recommendation": "Signal faible \u2014 hedge \u00e9quilibr\u00e9 recommand\u00e9. Prudence.",
+  "signals": [
+    {
+      "name": "SuperTrend",
+      "value": "NEUTRAL",
+      "weight": 0
+    },
+    {
+      "name": "EMA_Align",
+      "value": "BEARISH (-0.246%)",
+      "weight": -2
+    },
+    {
+      "name": "RSI",
+      "value": "28.8 OVERSOLD (Reversal)",
+      "weight": 2
+    },
+    {
+      "name": "ADX",
+      "value": "44.7 STRONG (amplificateur x1.5)",
+      "weight": 0
+    },
+    {
+      "name": "Spread",
+      "value": "16 pts \u2713 OK",
+      "weight": 0
+    },
+    {
+      "name": "Recent_GOLD",
+      "value": "292 trades | WR=77% | PnL=$-5678.07",
+      "weight": 0
+    }
+  ],
+  "eod_trigger": "20:55 GMT+0",
+  "analysis_done": true,
+  "gold_tick": {
+    "sym": "XAUUSD",
+    "bid": 4520.83,
+    "ask": 4520.99,
+    "rsi": 28.83,
+    "adx": 44.68,
+    "atr": 8.18857,
+    "spread": 16,
+    "regime": 0,
+    "ema_fast": 4525.99256,
+    "ema_slow": 4537.13722,
+    "confluence": 1.0,
+    "active_strat": "MOM"
+  },
+  "context": {
+    "account": "32071568",
+    "server": "Deriv-Demo",
+    "broker": "DERIV",
+    "mode": "DEMO",
+    "is_real": false,
+    "timestamp": 1777471209.4284558
+  }
+}

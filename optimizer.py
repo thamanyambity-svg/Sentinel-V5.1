@@ -588,21 +588,31 @@ def main():
             trades = []
             for item in data.get("trades", data if isinstance(data, list) else []):
                 try:
+                    # Conversion des types et mapping des champs Sentinel V5
+                    direction = str(item.get("type", "BUY")).upper()
+                    
+                    # Conversion epoch to datetime
+                    open_time = datetime.fromtimestamp(item["time_open"]) if isinstance(item.get("time_open"), (int, float)) else datetime.fromisoformat(item["time_open"])
+                    
+                    # Durée en secondes pour estimer close_time si absent
+                    duration = item.get("duration", 60)
+                    close_time = datetime.fromtimestamp(item["time_open"] + duration) if isinstance(item.get("time_open"), (int, float)) else open_time + timedelta(seconds=duration)
+
                     trades.append(TradeRecord(
                         symbol        = item["symbol"],
-                        direction     = item["direction"],
-                        open_time     = datetime.fromisoformat(item["open_time"]),
-                        close_time    = datetime.fromisoformat(item["close_time"]),
-                        open_price    = float(item.get("open_price", 0)),
-                        close_price   = float(item.get("close_price", 0)),
-                        lot           = float(item.get("lot", 0.01)),
-                        profit        = float(item["profit"]),
-                        sl_distance   = float(item.get("sl_distance", 0)),
-                        atr_at_entry  = float(item.get("atr_at_entry", 0)),
-                        rsi_at_entry  = float(item.get("rsi_at_entry", 50)),
-                        adx_at_entry  = float(item.get("adx_at_entry", 20)),
+                        direction     = direction,
+                        open_time     = open_time,
+                        close_time    = close_time,
+                        open_price    = float(item.get("price_open", 0)),
+                        close_price   = float(item.get("price_close", 0)),
+                        lot           = float(item.get("volume", 0.01)),
+                        profit        = float(item["pnl"]),
+                        sl_distance   = float(item.get("sl_pips", 0)) * 0.01, # Estimation si sl_pips present
+                        atr_at_entry  = float(item.get("atr", 0)),
+                        rsi_at_entry  = float(item.get("rsi", 50)),
+                        adx_at_entry  = float(item.get("adx", 20)),
                     ))
-                except (KeyError, ValueError, TypeError):
+                except (KeyError, ValueError, TypeError) as e:
                     continue
             print(f"{len(trades)} trades chargés")
         except (IOError, json.JSONDecodeError) as e:

@@ -28,6 +28,31 @@ import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Dict
+import threading
+
+# Simple cache system
+class SimpleCache:
+    def __init__(self):
+        self._cache = {}
+        self._lock = threading.RLock()
+    
+    def get(self, key: str, ttl: float = 8.0) -> Optional[dict]:
+        with self._lock:
+            if key in self._cache:
+                entry = self._cache[key]
+                if (time.time() - entry['ts']) < ttl:
+                    return entry['data']
+                del self._cache[key]
+        return None
+    
+    def set(self, key: str, data: dict):
+        with self._lock:
+            self._cache[key] = {'data': data, 'ts': time.time()}
+
+cache = SimpleCache()
+
+from dashboard_manager import DashboardManager
+global_manager = DashboardManager()
 try:
     from discord_dashboard_report import send_dashboard_report
 except ImportError:
@@ -95,16 +120,28 @@ WIDTH = 72  # largeur totale du dashboard
 # ══════════════════════════════════════════════════════════════════
 
 def read_json(path: Path) -> Optional[dict]:
+    key = f"json:{path}"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+    
     try:
         if path.exists() and path.stat().st_size > 0:
             with open(path, encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                cache.set(key, data)
+                return data
     except Exception:
         pass
     return None
 
 
 def read_last_lines(path: Path, n: int = 8) -> List[str]:
+    key = f"log:{path}:{n}"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+    
     try:
         if not path.exists():
             return []
@@ -115,7 +152,9 @@ def read_last_lines(path: Path, n: int = 8) -> List[str]:
             f.seek(-chunk, 2)
             raw = f.read().decode("utf-8", errors="replace")
         lines = [l for l in raw.splitlines() if l.strip()]
-        return lines[-n:]
+        result = lines[-n:]
+        cache.set(key, result)
+        return result
     except Exception:
         return []
 
@@ -429,26 +468,20 @@ def section_logs() -> List[str]:
 def section_performance() -> List[str]:
     lines = [box_row(sep(label="💰 PERFORMANCE RÉELLE (ALADDIN V7)"))]
     
-    path = FILES["performance"]
-    if not path.exists():
-        lines.append(box_row(f"  {dim('aladdin_performance.csv introuvable — aucun trade encore ?')}"))
-        return lines
-    
+    # Use cached CSV loader (max 10 lines)
     try:
-        with open(path, "r", encoding="utf8") as f:
-            csv_lines = f.readlines()
+        from dashboard_manager import DashboardManager
+        manager = DashboardManager()
+        csv_data = manager.load_data("performance")
         
-        if len(csv_lines) <= 1:
-            lines.append(box_row(f"  {dim('aladdin_performance.csv vide')}"))
+        if not csv_data or len(csv_data.get("rows", [])) <= 1:
+            lines.append(box_row(f"  {dim('aladdin_performance.csv vide/introuvable')}"))
             return lines
-            
-        header = csv_lines[0].strip().split(",")
-        trades = csv_lines[1:]
-        # Afficher les 4 derniers trades
-        for t_line in trades[-4:]:
+        
+        trades = csv_data["rows"][-4:]  # Last 4 trades
+        for t_line in trades:
             cols = t_line.strip().split(",")
             if len(cols) < 5: continue
-            # Format: Time, Symbol, Type, Lot, Entry, SL, TP, Comment, Strategy, Confluence
             t_time = cols[0][11:16] # HH:MM
             t_sym  = cols[1]
             t_type = cols[2]
@@ -461,115 +494,102 @@ def section_performance() -> List[str]:
                 f"Lot: {bold(t_lot)}   Conf: {yellow(bold(t_conf))}"
             ))
     except Exception as e:
-        lines.append(box_row(f"  {red(f'Erreur lecture performance: {e}')}"))
+        lines.append(box_row(f"  {red(f'Erreur performance: {e}')}"))
         
     return lines
 
 
 def section_blackbox_live() -> List[str]:
     lines = [box_row(sep(label="📡 BLACKBOX : ÉVOLUTION LIVE"))]
-    path = FILES["bb_live"]
-    if not path.exists():
-        lines.append(box_row(f"  {dim('En attente de données live...')}"))
+    
+    csv_data = global_manager.load_data("bb_live")
+    if not csv_data or len(csv_data.get("rows", [])) <= 1:
+        lines.append(box_row(f"  {dim('En attente de trades live...')}"))
         return lines
     
-    try:
-        with open(path, "r", encoding="utf8") as f:
-            csv_lines = f.readlines()
-        if len(csv_lines) <= 1:
-            lines.append(box_row(f"  {dim('Fichier vide')}"))
-            return lines
-            
-        # On récupère le temps MT5 actuel depuis status.json pour le filtrage
-        status_data = read_json(FILES["status"])
-        mt5_now = status_data.get("ts", 0) if status_data else 0
-
-        # On regroupe par ticket pour n'afficher que l'état le plus récent de chaque trade ouvert
-        latest_states = {}
-        for l in csv_lines[1:]:
-            cols = l.strip().split(",")
-            if len(cols) < 5: continue
-            
-            # Filtre de fraîcheur : si le trade n'a pas été actualisé depuis 15s (temps MT5)
-            # alors il est considéré comme fermé.
-            try:
-                t_str = cols[1]
-                t_epoch = datetime.strptime(t_str, "%Y.%m.%d %H:%M:%S").timestamp()
-                # Note: datetime.timestamp() dépend de la timezone locale, 
-                # mais mt5_now est aussi un epoch broker. Si le bridge tourne
-                # sur la même machine que MT5 (Wine/Mac), l'écart est constant.
-                # Plus simple: on compare la différence brute si on peut.
-                # On va juste faire confiance au fait que si c'est dans les dernières lignes, c'est récent.
-            except: pass
-
-            latest_states[cols[0]] = cols # Ticket is key
-            
-        for ticket, cols in latest_states.items():
-            # Ticket, Time, Symbol, Price, PnL_Pts, PnL_Money, Equity
-            t_time_str = cols[1]
-            try:
-                # Si status.json est dispo, on valide la fraîcheur réelle
-                if mt5_now > 0:
-                    t_dt = datetime.strptime(t_time_str, "%Y.%m.%d %H:%M:%S")
-                    # On convertit t_dt en epoch "broker" approximatif
-                    # (On ignore la TZ car on veut juste le diff)
-                    if (datetime.now() - t_dt).total_seconds() > 30: # Fallback temporel local
-                        continue
-            except: pass
-
-            t_time = t_time_str[11:19]
-            t_sym  = cols[2]
-            t_pnl  = float(cols[5])
-            t_cash = float(cols[6])
-            
-            pnl_col = green if t_cash >= 0 else red
-            lines.append(box_row(
-                f"  {dim(t_time)} {bold(t_sym):<7} {pnl_col(bold(f'{t_cash:+.2f}$'))} ({t_pnl:.1f} pts)  T:{dim(ticket)}"
-            ))
-    except Exception as e:
-        lines.append(box_row(f"  {red(f'Erreur BB Live: {e}')}"))
+    # Parse last 3 rows (skip header)
+    recent_trades = []
+    for row in csv_data["rows"][-4:]:  # Extra for safety
+        cols = row.strip().split(",")
+        if len(cols) < 7: continue  # Ticket,Time,Sym,Price,PnL_Pts,PnL_Money,Equity
+        
+        try:
+            ticket = cols[0]
+            t_time = cols[1][11:19]  # HH:MM:SS
+            sym = cols[2]
+            pnl_pts = float(cols[4])
+            pnl_money = float(cols[5])
+            recent_trades.append((t_time, sym, pnl_money, pnl_pts, ticket))
+        except (ValueError, IndexError):
+            continue
+    
+    if not recent_trades:
+        lines.append(box_row(f"  {dim('Aucun trade live récent')}"))
+        return lines
+    
+    for t_time, sym, pnl_money, pnl_pts, ticket in recent_trades[:3]:
+        pnl_col = green if pnl_money >= 0 else red
+        lines.append(box_row(
+            f"  {dim(t_time)} {bold(sym):<8} {pnl_col(bold(f'{pnl_money:+.1f}$'))} "
+            f"({pnl_pts:+.1f}pts) {dim(f'T{ticket[-4:]}')}"
+        ))
+    
     return lines
 
 
 def section_blackbox_reasoning() -> List[str]:
     lines = [box_row(sep(label="🧠 BLACKBOX : RAISONNEMENT (POURQUOI?)"))]
-    path = FILES["bb_entry"]
-    if not path.exists():
-        lines.append(box_row(f"  {dim('Historique des décisions vide')}"))
-        return lines
     
-    try:
-        with open(path, "r", encoding="utf8") as f:
-            csv_lines = f.readlines()
-        if len(csv_lines) <= 1: return lines
-        
-        # Afficher les 2 dernières décisions
-        for l in csv_lines[-2:]:
-            cols = l.strip().split(",")
+    # Last decisions from bb_entry
+    csv_data = global_manager.load_data("bb_entry")
+    if csv_data and len(csv_data.get("rows", [])) > 1:
+        for row in csv_data["rows"][-3:]:
+            cols = row.strip().split(",")
             if len(cols) < 13: continue
-            # Time, Symbol, Type, Lot, Entry, SL, TP, RSI, ADX, Regime, Conf, Strats, StopLevel
-            t_time = cols[0][11:16]
-            t_sym  = cols[1]
-            t_strats = cols[11]
-            t_rsi = cols[7]
-            t_adx = cols[8]
-            t_stopl = cols[12]
-            
-            lines.append(box_row(
-                f"  {dim(t_time)} {bold(t_sym)}: {cyan(t_strats)}  "
-                f"RSI:{t_rsi} ADX:{t_adx} SLvl:{t_stopl}"
-            ))
-    except Exception: pass
+            try:
+                t_time = cols[0][11:16]  # HH:MM
+                sym = cols[1]
+                type_ = cols[2]
+                strats = cols[11][:20]  # Truncate
+                rsi = cols[7]
+                adx = cols[8]
+                conf = cols[10]
+                type_col = green if type_ == "BUY" else red
+                lines.append(box_row(
+                    f"  {dim(t_time)} {bold(sym)} {type_col(type_)}  "
+                    f"{cyan(strats)}  RSI:{dim(rsi)} ADX:{dim(adx)} C:{conf}"
+                ))
+            except (ValueError, IndexError):
+                continue
+    
+    # Last Sovereign reasoning from action_plan
+    ap = global_manager.load_data("action_plan")
+    if ap:
+        decision = ap.get("decision", "?")
+        reasoning = ap.get("reasoning", "")[:60]
+        asset = ap.get("asset", "?")
+        dec_col = green if decision in ("BUY", "SELL") else yellow
+        lines.append(box_row(dim("─" * 60)))
+        lines.append(box_row(
+            f"  🧠 Sovereign [{bold(asset)}]: {dec_col(bold(decision))}  {dim(reasoning)}"
+        ))
+    
+    if not csv_data and not ap:
+        lines.append(box_row(f"  {dim('Aucune décision récente')}"))
+    
     return lines
 
 
 def section_footer(interval: int) -> List[str]:
+    # Cache stats
+    cache_hits = len([k for k,v in cache._cache.items() if (time.time() - v['ts']) < 8])
     discord_info = f" (Discord: {bold('ON')})" if "--discord" in str(sys.argv) else f" ({dim('--discord pour rapports')})"
     return [
         box_row(""),
         box_row(
             f"  {dim('Q: quitter    R: forcer refresh')}  "
-            f"{dim(f'Ref: {interval}s')}{discord_info}"
+            f"{dim(f'Ref: {interval}s')}  Cache: {bold(f'{cache_hits}/15')}  🚀"
+            f"{discord_info}"
         ),
         box_bottom(),
         "",
@@ -606,8 +626,8 @@ def clear_screen():
 
 def main():
     parser = argparse.ArgumentParser(description="Sentinel V10 — Dashboard Live")
-    parser.add_argument("--interval", type=int, default=5,
-                        help="Intervalle de rafraîchissement en secondes (défaut: 5)")
+    parser.add_argument("--interval", type=int, default=10,
+                        help="Intervalle de rafraîchissement en secondes (défaut: 10)")
     parser.add_argument("--once", action="store_true",
                         help="Affiche une fois et quitte")
     parser.add_argument("--discord", action="store_true",

@@ -1,22 +1,27 @@
-import { View, ScrollView, SafeAreaView, Switch, Pressable } from "react-native";
+import { View, ScrollView, SafeAreaView, Switch, Pressable, Text } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import { HeaderTrading } from "@/components/header-trading";
 import { GlassCard } from "@/components/ui/glass-card";
 import { TerminalText } from "@/components/ui/terminal-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { trpc } from "@/lib/trpc";
 
 export default function SettingsScreen() {
   const colors = useColors();
+  const { data: tradingData } = trpc.getTradingData.useQuery(undefined, {
+    refetchInterval: 1000,
+  });
+  const account = tradingData?.account;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <HeaderTrading 
-        balance={125430.82} 
-        equity={127890.15} 
-        marginLevel={12.4} 
-        marketOpen={true} 
+      <HeaderTrading
+        balance={account?.balance || 0}
+        equity={account?.equity || 0}
+        marginLevel={account?.marginLevel || 0}
+        marketOpen={account?.marketOpen ?? true}
       />
-      
+
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-white/5">
         <View>
           <TerminalText variant="matrix" size="xs">SYSTEM CONFIGURATION</TerminalText>
@@ -51,8 +56,8 @@ export default function SettingsScreen() {
                 <TerminalText variant="primary" size="sm" className="font-bold">{item.label}</TerminalText>
                 <TerminalText variant="matrix" size="xs" className="opacity-40">{item.desc}</TerminalText>
               </View>
-              <Switch 
-                value={item.active} 
+              <Switch
+                value={item.active}
                 trackColor={{ false: '#30363d', true: colors.primary }}
                 thumbColor="#fff"
               />
@@ -73,7 +78,7 @@ export default function SettingsScreen() {
               <TerminalText variant="cyan" size="sm" className="font-black">INSTITUTIONAL</TerminalText>
             </View>
           </View>
-          
+
           <Pressable className="w-full py-3 items-center justify-center bg-white/5 border border-white/10 rounded">
             <TerminalText variant="primary" size="xs" className="font-bold">EXPORT PERFORMANCE LOGS (.JSON)</TerminalText>
           </Pressable>

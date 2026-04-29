@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import io from 'socket.io-client';
 
 const MODULES = [
     {
@@ -127,8 +128,25 @@ const s = {
 };
 
 export default function MLDashboard() {
-    const [tab, setTab] = useState("pipeline");
+    const [tab, setTab] = useState("live");
     const [sel, setSel] = useState(null);
+    
+    // Live data state
+    const [liveTicks, setLiveTicks] = useState({});
+    const [positions, setPositions] = useState([]);
+    const [account, setAccount] = useState({balance: 0, equity: 0});
+    const [socket, setSocket] = useState(null);
+    const [voiceActive, setVoiceActive] = useState(false);
+    const [listening, setListening] = useState(false);
+    const recognitionRef = useRef(null);
+    
+    // WebSocket connection
+    useEffect(() => {
+        const newSocket = io('http://localhost:5000');
+        newSocket.on('connect', () => {
+            console.log('WebSocket connected');
+            newSocket.emit('subscribe_ticks');
+        });
 
     return (
         <div style={s.root}>

@@ -28,6 +28,8 @@ from bot.core.monitor import ResourceMonitor  # V5.2 Hardening
 from bot.risk.risk_manager import RiskManager
 from bot.state.risk.rules.engine import can_execute_trade, register_trade
 from bot.state.risk.limits import reset_daily_limits
+from bot.risk.risk_os import risk_os 
+from bot.risk.config import *  # Central Config
 from bot.core.process_lock import acquire as lock_acquire, release as lock_release
 from bot.strategy.ifvg_volatility import get_ifvg_signal
 from bot.strategy.volatility_rider import get_volatility_rider_signal
@@ -100,7 +102,8 @@ async def run_bot():
         return
 
     bridge = MT5Bridge(root_path=mt5_path)
-    risk_manager = RiskManager(max_grid_layers=3, risk_per_trade=0.015, max_daily_loss=MAX_DAILY_DD_PCT)
+    risk_manager = RiskManager(max_grid_layers=3, risk_per_trade=0.0075, max_daily_loss=MAX_DAILY_DD_PCT)
+    atr_history = {} # {asset: deque(maxlen=100)}
     
     # 2. Start Intelligence
     await brain.initialize()
@@ -235,6 +238,27 @@ async def run_bot():
 
             # M5 bars for IFVG (Volatility 100/75)
             m5_bars = bridge.get_m5_bars()
+            
+            # --- INSTITUTIONAL RISK OS GLOBAL UPDATE (Real-Time Feed) ---
+            portfolio = bridge.get_portfolio()
+            acc_status = bridge.get_raw_status()
+            
+            # Simplified ATR Ratio calculation for global health
+            # We use GOLD or the first available asset to gauge market stress
+            sample_atr_ratio = 1.0
+            if "XAUUSD" in m5_bars:
+                candles = m5_bars["XAUUSD"]
+                if len(candles) >= 14:
+                    curr_atr = sum([abs(float(c['h'])-float(c['l'])) for c in candles[:14]]) / 14
+                    if "XAUUSD" in atr_history and len(atr_history["XAUUSD"]) > 0:
+                        avg_hist = sum(atr_history["XAUUSD"]) / len(atr_history["XAUUSD"])
+                        sample_atr_ratio = curr_atr / avg_hist if avg_hist > 0 else 1.0
+            
+            risk_state = risk_os.update(portfolio, acc_status, {"GLOBAL": sample_atr_ratio})
+            if risk_state["health_score"] < 40:
+                logger.warning(f"🚨 SYSTEM HEALTH CRITICAL ({risk_state['health_score']}/100) - HALTING TRADES")
+                await asyncio.sleep(FAST_SCAN_INTERVAL)
+                continue
                 
             # D. Asset Scan (WITH DEBUG LOGS)
             for asset in scan_list:
@@ -348,76 +372,82 @@ async def run_bot():
                             logger.info(f"⏸️ {asset}: Max positions reached ({open_count}/{MAX_POSITIONS_PER_ASSET})")
                             continue
 
-                        # Risk gate: TOUJOURS actif (sécurité obligatoire)
+                        # Secondary Safety: Daily Limits
                         allowed, reason = can_execute_trade({"asset": asset})
                         if not allowed:
-                            logger.info(f"⏸️ {asset}: Risk gate — {reason}")
+                            logger.info(f"⏸️ {asset}: Daily risk gate — {reason}")
                             continue
 
-                        # VOLUME CONFIGURATION (SCALPER MODE)
-                        volume = 0.50 if "Volatility" in asset else 0.10
+                        # --- RISK & REGIME GATE ---
+                        vol_candles = m5_bars.get(asset, [])
+                        if not vol_candles:
+                            logger.warning(f"⚠️ {asset}: No candles for ATR check")
+                            continue
+                            
+                        current_atr_pips = get_atr_sl_pips(vol_candles, point=point)
+                        
+                        # Maintain ATR History for Regime Detection
+                        if asset not in atr_history:
+                            atr_history[asset] = deque(maxlen=100)
+                        atr_history[asset].append(current_atr_pips)
+                        
+                        avg_atr = sum(atr_history[asset]) / len(atr_history[asset])
+                        
+                        # 1. ATR Regime Gate (Single Source of Truth from Config)
+                        if current_atr_pips < REGIME_DEAD_THRESHOLD * avg_atr:
+                            logger.info(f"⏭️ {asset}: Dead Market (ATR {current_atr_pips:.2f} < {REGIME_DEAD_THRESHOLD*100}%)")
+                            continue
+                        if current_atr_pips > REGIME_CHAOS_THRESHOLD * avg_atr:
+                            logger.info(f"⏭️ {asset}: Chaos/News (ATR {current_atr_pips:.2f} > {REGIME_CHAOS_THRESHOLD*100}%)")
+                            continue
 
-                        target_pct = SCALP_TARGET_PCT  # Scalping précis (TP serré)
+                        # Execution Anomaly Check (Spread Stress)
+                        # We need spread from the bridge
+                        spread_points = bridge.get_current_spread(asset)
+                        if spread_points > (current_atr_pips * MAX_SPREAD_ATR_RATIO):
+                            logger.warning(f"⏭️ {asset}: SPREAD ANOMALY ({spread_points} > {MAX_SPREAD_ATR_RATIO*100}% ATR)")
+                            continue
 
-                        if signal == "BUY":
-                            tp_price = price * (1 + target_pct)
+                        # 2. Setup-Based R:R Mapping
+                        # Mean Reversion: 1:1 | Scalp: 1.5:1 | Momentum: 2:1
+                        sl_mult = 1.0 # Standard SL mult
+                        tp_mult = 1.5 # Standard TP mult
+                        
+                        if strategy_name == "RSI_EXTREME_REVERSAL":
+                            sl_mult, tp_mult = 1.0, 1.0 # Mean Reversion
+                        elif strategy_name == "VOLATILITY_RIDER" or strategy_name == "IFVG_SCALP":
+                            sl_mult, tp_mult = 1.0, 2.0 # Momentum
                         else:
-                            tp_price = price * (1 - target_pct)
+                            sl_mult, tp_mult = 1.0, 1.5 # Standard Scalp (ALADDIN)
+                            
+                        # Apply AI Confidence Modifier (+/- 0.15R only if > 0.85)
+                        if ai_confidence > 0.85:
+                            tp_mult += 0.15
+                        
+                        # Apply ATR Guardrails (0.5 - 3.5)
+                        sl_mult, tp_mult = risk_manager.get_atr_capped_distances(current_atr_pips, sl_mult, tp_mult)
+                        sl_pips = int(current_atr_pips * sl_mult)
 
-                        # Risk/confidence: agressif quand signal bon (>= 0.70 pour passer le filtre EA)
-                        if strategy_name != "IFVG_SCALP":
-                            ai_confidence = 0.85
-                            if "WEAK" in trend: ai_confidence = 0.70
-                            ai_risk_multiplier = 1.2
-                            if risk_level == "LOW": ai_risk_multiplier = 1.5
-                            elif risk_level == "ELEVATED": ai_risk_multiplier = 0.9
-                        else:
-                            ai_risk_multiplier = 1.15
+                        # 3. Institutional Position Sizing & Correlation
+                        positions = bridge.get_portfolio()
+                        ai_risk_multiplier = risk_manager.get_dynamic_risk_multiplier(asset, positions, ai_confidence)
+                        
+                        if ai_risk_multiplier <= 0:
+                            logger.info(f"⏭️ {asset}: Risk Manager Rejected (Portfolio Cap / Correlation)")
+                            continue
 
-                        # Vol 100: ATR dynamique (SL + risk multiplier selon régime volatilité)
-                        vol_candles = m5_bars.get(asset, []) if "Volatility" in asset else []
-                        if vol_candles:
-                            atr_risk = get_atr_risk_multiplier(vol_candles)
-                            ai_risk_multiplier *= atr_risk
-                            atr_sl = get_atr_sl_pips(vol_candles, point=point)
-                            if strategy_name == "ALADDIN_SCALP" or sl_pips == DEFAULT_SL_PIPS_VOLATILITY:
-                                sl_pips = atr_sl
-                            elif strategy_name in ("VOLATILITY_RIDER", "RSI_EXTREME_REVERSAL"):
-                                sl_pips = max(sl_pips, atr_sl)  # garder le max (plus sécurisant)
-
-                        # SL réfléchi par instrument
-                        if strategy_name == "IFVG_SCALP":
-                            pass  # déjà défini par IFVG
-                        elif asset in ("GOLD", "XAUUSD"):
-                            # GOLD: SL serré en points (1 point = $0.01 sur XM)
-                            # 300 points = $3.00 de SL — adapté au scalping
-                            sl_pips = 300
-                        elif "Volatility" not in asset and "Index" not in asset:
-                            sl_pips = int(price * 0.00025 * (100 if "JPY" in asset else 10000))
-                        if sl_pips < 5:
-                            sl_pips = 5
-
-                        # --- LEARNING: log signal AVANT exécution (pour outcome tracking) ---
+                        # --- LEARNING: log signal AVANT exécution ---
                         analysis_for_log = {"price": price, "change_percent": change, "trend": trend, "spread": 0}
                         learning_brain.log_signal(asset, signal, analysis_for_log, risk_level, strategy=strategy_name)
 
-                        # Filtre ML optionnel: skip si prob win trop bas (hors TESTING_MODE pour laisser apprendre)
-                        if not TESTING_MODE:
-                            skip_ml, win_prob = learning_brain.should_skip_by_ml(change, trend, min_prob=0.35)
-                            if skip_ml:
-                                logger.info(f"⏭️ {asset}: ML skip (win_prob={win_prob:.2f} < 0.35)")
-                                continue
-                            # Boost confiance adaptatif
-                            ai_confidence *= learning_brain.get_adaptive_confidence_boost(asset, strategy_name)
-
                         # Cooldown: ne pas envoyer un ordre par actif plus d'une fois toutes les 90 s
                         if (current_time - last_order_sent_at.get(asset, 0)) < ORDER_COOLDOWN_SEC:
-                            logger.info(f"⏸️ {asset}: Cooldown ({ORDER_COOLDOWN_SEC}s), skip envoi")
+                            logger.info(f"⏸️ {asset}: Cooldown ({ORDER_COOLDOWN_SEC}s), skip")
                             continue
                         last_order_sent_at[asset] = current_time
 
-                        # EXECUTE VIA BRIDGE (IFVG or ALADDIN)
-                        logger.info(f"⚡ EXEC {strategy_name} {signal} {asset} | Risk: x{ai_risk_multiplier} | Conf: {ai_confidence}")
+                        # EXECUTE VIA BRIDGE
+                        logger.info(f"⚡ EXEC {strategy_name} {signal} {asset} | Risk: x{ai_risk_multiplier} | RR: {sl_mult}:{tp_mult}")
                         
                         bridge.send_tudor_trade(
                             symbol=asset,
@@ -427,7 +457,9 @@ async def run_bot():
                             signal_strength=ai_confidence,
                             stop_loss_pips=sl_pips,
                             ai_risk_multiplier=ai_risk_multiplier,
-                            ai_confidence_score=ai_confidence
+                            ai_confidence_score=ai_confidence,
+                            sl_mult=sl_mult,
+                            tp_mult=tp_mult
                         )
 
                         trade_msg = (

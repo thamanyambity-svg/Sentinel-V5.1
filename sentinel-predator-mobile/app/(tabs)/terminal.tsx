@@ -5,25 +5,32 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { TerminalText } from "@/components/ui/terminal-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
-const MOCK_SCANNER = [
-  { pair: "XAUUSD", price: "2034.12", change: "+0.45%", trend: "up", volume: "High" },
-  { pair: "EURUSD", price: "1.08542", change: "-0.12%", trend: "down", volume: "Mid" },
-  { pair: "GBPUSD", price: "1.26781", change: "+0.02%", trend: "up", volume: "Low" },
-  { pair: "NAS100", price: "17845.20", change: "+1.24%", trend: "up", volume: "Extreme" },
-  { pair: "USDJPY", price: "148.241", change: "+0.54%", trend: "up", volume: "Mid" },
-];
-
-export default function TerminalScreen() {
-  const colors = useColors();
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <HeaderTrading
-        balance={125430.82}
-        equity={127890.15}
-        marginLevel={12.4}
-        marketOpen={true}
-      />
+import { trpc } from "@/lib/trpc";
+import { Sparkline } from "@/components/ui/sparkline";
+ 
+ const MOCK_SCANNER = [
+   { pair: "XAUUSD", price: "2034.12", change: "+0.45%", trend: "up", volume: "High" },
+   { pair: "EURUSD", price: "1.08542", change: "-0.12%", trend: "down", volume: "Mid" },
+   { pair: "GBPUSD", price: "1.26781", change: "+0.02%", trend: "up", volume: "Low" },
+   { pair: "NAS100", price: "17845.20", change: "+1.24%", trend: "up", volume: "Extreme" },
+   { pair: "USDJPY", price: "148.241", change: "+0.54%", trend: "up", volume: "Mid" },
+ ];
+ 
+ export default function TerminalScreen() {
+   const colors = useColors();
+   const { data: tradingData } = trpc.getTradingData.useQuery(undefined, {
+     refetchInterval: 1000,
+   });
+   const account = tradingData?.account;
+ 
+   return (
+     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+       <HeaderTrading
+         balance={account?.balance || 0}
+         equity={account?.equity || 0}
+         marginLevel={account?.marginLevel || 0}
+         marketOpen={account?.marketOpen ?? true}
+       />
 
       <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
         <View>
@@ -48,6 +55,9 @@ export default function TerminalScreen() {
             <View style={{ flex: 1 }}>
               <TerminalText variant="primary" size="sm" className="font-bold">{item.pair}</TerminalText>
               <TerminalText variant="matrix" size="xs">VOL: {item.volume}</TerminalText>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Sparkline data={tradingData?.history?.[item.pair] || [1,2,1.5,3,2]} width={50} height={20} />
             </View>
             <View style={{ flex: 1 }}>
               <TerminalText variant="ticker" size="md">{item.price}</TerminalText>

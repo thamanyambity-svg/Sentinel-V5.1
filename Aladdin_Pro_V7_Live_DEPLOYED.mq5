@@ -20,10 +20,14 @@
 //|   V7.20    : Trailing GOLD-TIGHT (ATR*0.10 activation, *0.07 step)               |
 //|   V7.21    : ApplyManualProtection_V7 (SL/TP auto trades manuels)                |
 //|   V7.22    : OVERNIGHT HEDGE GOLD (3 dominants + 2 hedges @20h55 GMT+0)          |
+//|   V7.25    : NIGHT FIX — Trailing inclus trades EOD Hedge                    |
+//|             : TP = 15xATR (filet), SL = 1.5xATR (respiration)               |
+//|             : Lots EOD = 0.20% risque réel (fin du lot fixe 0.01)           |
+//|             : Ratchet Audit connecté aux trades Overnight                    |
 //+------------------------------------------------------------------+
 
 #property copyright "Ambity — Pro Build V7.00-Deriv"
-#property version   "7.22"
+#property version   "7.25"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -73,12 +77,12 @@ input EnLogLevel LoggingLevel       = LOG_INFO;
 input group "=== RISK MANAGEMENT ==="
 input double RiskPerTrade_Pct       = 0.20;  // V11 Defensive — NE PAS augmenter avant V12
 input double ATR_SL_Multiplier      = 2.0;   // V11 Defensive
-input double ATR_TP_Multiplier      = 6.0;   // V7.16 — augmenté 4.0→6.0 (TP trop rarement atteint)
-input int    MaxOpenPositions       = 3;
-input int    MaxDailyTrades         = 8;
+input double ATR_TP_Multiplier      = 12.0;  // V7.25+: Harmonisé (Large TP + Trailing Exit)
+input int    MaxOpenPositions       = 5;     // V7.25+: Mode Demo (Multi-trades actif)
+input int    MaxDailyTrades         = 15;    // V7.25+: Plus d'opportunites
 input int    MaxSpread_Gold         = 120;
 input int    MaxSpread_Forex        = 100;
-input int    MaxSpread_Index        = 500;
+input int    MaxSpread_Index        = 250;   // V7.25+: Plus strict (500 -> 250)
 input int    MaxSpread_NGAS         = 500;
 input double MaxLot_Gold            = 0.50;
 input double MaxLot_Forex           = 2.00;
@@ -88,7 +92,7 @@ input int    StopLevelBuffer_Pts    = 100;
 
 input group "=== BREAK-EVEN (V7.12) ==="
 input bool   EnableBreakEven        = true;  // Activer le Break-Even automatique
-input double BE_TriggerUSD          = 0.50;  // Profit $ pour déclencher le BE (serré pour GOLD scalp)
+input double BE_TriggerUSD          = 5.00;  // V7.25+: Profit $ min pour déclencher le BE (évite le bruit)
 input int    BE_PipsBuffer          = 2;     // Pips de sécurité au-delà du prix d'entrée
 
 input group "=== RÈGLES AUTOMATIQUES ==="
@@ -112,13 +116,14 @@ input int    MinConfluenceScore     = 1;
 
 input group "=== ML & SIMULATION ==="
 input bool   SimulationMode         = false;
-input bool   EnableMLFilter         = false;
-input double ML_MinConfidence       = 0.52;
+input bool   EnableMLFilter         = true;
+input double ML_MinConfidence       = 0.65;
 
 input group "=== TRAILING STOP ==="
 input bool   EnableTrailingStop     = true;
-input double Trail_ATR_Activation   = 0.5;
-input double Trail_ATR_Step         = 0.25;
+input double Trail_ATR_Activation   = 0.15;  // V7.25+: Plus réactif (0.5 -> 0.15)
+input double Trail_ATR_Step         = 0.10;  // V7.25+: Plus serré (0.25 -> 0.10)
+input bool   USE_RATCHET_ENGINE     = false; // V7.24 Phase A (Disabled by default)
 
 input group "=== SUPERTREND FILTER (EUR/GBP) ==="
 input bool   Enable_SuperTrend_Filter = true;
@@ -145,14 +150,14 @@ input bool   Enable_NewsFilter      = true;  // Bloquer trading pendant news maj
 input bool   Enable_PreNews_Secure  = true;  // Sécuriser positions 2h avant news Tier1
 
 input group "=== FILTRE HORAIRE GLOBAL (V7.16) ==="
-input bool   Enable_Global_TimeFilter = true;
+input bool   Enable_Global_TimeFilter = false;
 // Broker Deriv GMT+0 — heures bloquées en heure BROKER :
 // 00h(Paris01h) 01h(Paris02h) 12h(Paris13h)
 // 18h(Paris19h) 19h(Paris20h) 20h(Paris21h) 21h(Paris22h)
 // London open 08h-09h broker = AUTORISÉ ✅
 
 input group "=== FILTRE HORAIRE XAUUSD (V7.13) ==="
-input bool   Enable_Gold_TimeFilter = true;  // Bloquer XAUUSD hors session
+input bool   Enable_Gold_TimeFilter = false;  // Bloquer XAUUSD hors session
 input int    Gold_StartHour         = 7;     // Heure début (broker time)
 input int    Gold_EndHour           = 23;    // Heure fin   (broker time)
 
@@ -169,11 +174,11 @@ input int    EOD_Minute              = 55;    // Minute declenchement
 input double EOD_Dominant_Lot        = 0.01;  // Lot par trade dominant
 input double EOD_Hedge_Lot           = 0.01;  // Lot par trade hedge
 input int    EOD_Dominant_Count      = 3;     // Nombre de trades dominants
-input int    EOD_Hedge_Count         = 2;     // Nombre de trades hedge (sens oppose)
-input double EOD_Dominant_SL_ATR     = 1.5;   // SL dominants = N * ATR
-input double EOD_Dominant_TP_ATR     = 4.0;   // TP dominants = N * ATR
-input double EOD_Hedge_SL_ATR        = 0.3;   // SL hedges    = N * ATR (ultra serre)
-input double EOD_Hedge_TP_ATR        = 0.5;   // TP hedges    = N * ATR
+input int    EOD_Hedge_Count         = 0;     // V7.25+: Désactivé (ne pas parier contre la tendance)
+input double EOD_Dominant_SL_ATR     = 1.5;   // V7.25+: SL = 1.5 * ATR (Respiration)
+input double EOD_Dominant_TP_ATR     = 15.0;  // V7.25+: TP = 15 * ATR (Filet de sécurité)
+input double EOD_Hedge_SL_ATR        = 1.5;   // Identique aux dominants
+input double EOD_Hedge_TP_ATR        = 15.0;  // Identique aux dominants
 input int    EOD_MagicOffset         = 100;   // Magic = MagicNumber + offset (isolation)
 input bool   EOD_Alert_Popup         = true;  // Pop-up MT5 a l'execution
 
@@ -226,9 +231,28 @@ struct SymbolState {
     datetime cooldownUntil;    // Timestamp fin de cooldown
 };
 
+//=============================================================
+// 3b. INSTITUTIONAL RATCHET STATE (V7.24)
+//=============================================================
 #define MAX_TRACKED_TRADES 100
-struct TradeIndicators {
+struct TradeRiskState {
     long   positionId;
+    double initialRiskUSD;       // 1R Immutable
+    double initialRiskDistance;  // Distance SL initiale en points
+    double entryFill;            // Prix d'exécution réel (VWAP si multi-fill)
+    double slippage;             // Écart (Requested - Filled) en points
+    double lockedFloorR;         // Dernier palier R verrouillé (ex: 0.5, 1.0)
+    double highestLockedFloorR;  // Audit: Plus haut palier atteint
+    double highestProfitR;       // MFE en unités R
+    double maxDrawdownR;         // MAE en unités R
+    int    ratchetStage;         // 0=None, 1=0.5R, 2=1.0R, etc.
+    datetime lastRatchetUpdate;  // Timestamp dernier mouvement cliquet
+    
+    // Audit Shadow (Phase B)
+    double virtualExitR;         // Niveau R de sortie si le ratchet était actif
+    bool   isVirtualClosed;      // Flag pour marquer la sortie simulée
+    
+    // Heritage indicateurs pour ML/Audit
     double rsi;
     double adx;
     double atr;
@@ -236,19 +260,21 @@ struct TradeIndicators {
     int    regime;
     string session;
     int    hour;
-    int    day_of_week;   // 0=Lundi ... 4=Vendredi
-    double ema_distance;  // (ema_fast - ema_slow) / ema_slow * 100
-    double confluence;    // score confluence au moment de l'entrée
-    // Phase A++ additions
+    int    day_of_week;
+    double confluence;
+    bool   partial_done;
+    double ema_distance;
+    
+    // UI compatibility (V7.22 Legacy)
     double bb_upper;
     double bb_lower;
-    double bb_position;   // 0=below_lower, 1=in_band, 2=above_upper
-    double mfe;           // Maximum Favorable Excursion ($)
-    double mae;           // Maximum Adverse Excursion ($)
+    double bb_position;
+    double mfe;
+    double mae;
 };
 
-TradeIndicators trackedTrades[MAX_TRACKED_TRADES];
-int             trackedCount = 0;
+TradeRiskState trackedTrades[MAX_TRACKED_TRADES];
+int            trackedCount = 0;
 
 //=============================================================
 // 4. GLOBAL VARIABLES
@@ -267,6 +293,20 @@ datetime     lastResetDay      = 0;
 datetime     lastTickExport    = 0;
 TaskRule     rules[3];
 StrategyDef  strategies[3];
+
+//=============================================================
+// 3c. RATCHET PROFILES (V7.24 Phase B)
+//=============================================================
+struct RatchetProfile {
+    string symbol;
+    double activationR;
+    double trailGapR;
+    double locks[5];
+    int    lockCount;
+};
+
+RatchetProfile profileGold;
+RatchetProfile profileDefault;
 
 // V7.22 — Overnight Hedge state
 bool     eod_hedge_triggered_today = false;
@@ -297,13 +337,17 @@ void TrackLiveEvolution_V7();
 void CheckForExits_V7();
 void ApplyBreakEven_V7();
 void ApplyTrailingStop_V7();
+void ApplyScalingOut_V7();
 void ProcessPythonCommands();
 void RecordPerformance_V7(int idx, string sym, int sig, double lot, double p, double sl, double tp, string comment);
 void RecordBlackBoxEntry_V7(int idx, int sig, double lot, double p, double sl, double tp);
+void SaveTradeRiskState(long posId, int idx, double requestedPrice, double slAtEntry);
+void ApplyRatchetProfitLocks_V7();
+void InitRatchetProfiles_V7();
 bool UpdateIndicators(int idx);
 MarketRegime DetectRegime(int idx);
 int  StrategyDispatcher(int idx, MarketRegime regime, double &outConf, string &outName);
-void ExecuteEntry_V7(int idx, int signal);
+void ExecuteEntry_V7(int idx, int signal, double lot_mult=1.0, double sl_mult=0.0, double tp_mult=0.0);
 void RegisterSymbol(string sym, bool en, int type);
 bool InitSymbolIndicators(int idx);
 void ReleaseSymbolIndicators(int i);
@@ -329,6 +373,7 @@ bool IsNewsBlocked(string symbol);
 void ApplyPreNewsSecure();
 void ApplyManualProtection_V7();
 void ExecuteOvernightHedge_V7();
+void SyncDailyTradeCount_V7();
 int  GetGoldSymbolIdx();
 
 //=============================================================
@@ -401,6 +446,13 @@ int OnInit() {
         else if(SymbolSelect("US30", true))  RegisterSymbol("US30",  true, 2);
     }
 
+    /* 
+    // DESACTIVE V7.25+ : Trop imprévisible (Synthetics)
+    if(SymbolSelect("Volatility 100 Index", true)) {
+        RegisterSymbol("Volatility 100 Index", true, 2);
+    }
+    */
+
     if(Trade_NGAS) {
         if(SymbolSelect("NGAS", true))       RegisterSymbol("NGAS", true, 3);
         else Log.Warn("INIT", "NGAS non disponible sur ce broker");
@@ -455,6 +507,10 @@ int OnInit() {
     Log.Info("INIT", "V7.15 — Equity reelle au demarrage:  $" + DoubleToString(realEquity,  2));
     Log.Info("INIT", "V7.15 — status.json et ticks_v3.json ecrits immediatement");
 
+    InitRatchetProfiles_V7(); // V7.24 Phase B
+    CheckDailyReset_V7();
+    SyncDailyTradeCount_V7(); // V7.25+: Récupère les trades déjà faits aujourd'hui dans l'historique
+    
     return(INIT_SUCCEEDED);
 }
 
@@ -469,20 +525,22 @@ void OnDeinit(const int reason) {
 void OnTimer() {
     CheckDailyReset_V7();
     EvaluateRulesEngine();
-    UpdateMFE_MAE();
-    TrackLiveEvolution_V7();
-    CheckForExits_V7();
-    ExecuteOvernightHedge_V7(); // V7.22 — 3 dominants + 2 hedges @ EOD_Hour:EOD_Minute
-    ProcessPythonCommands();
-    ProcessActionPlan(); // <--- AJOUT PONT AI V5
-    ExportStatus_V7();
-    DiagnoseBBFilter();
 
-    // ── V7.20 FIX : Mise à jour indicateurs pour TOUS les symboles ──
-    // Avant l'export ticks, sinon RSI/ADX/ATR restent à 0 quand
-    // les filtres horaires bloquent le trading
+    // ── V7.25+ : UpdateIndicators EN PREMIER ──────────────────────────────────
+    // ATR/RSI/ADX doivent être frais AVANT CheckForExits, Trailing et Ratchet.
+    // Un ATR périmé = un Trailing Stop mal calibré.
     for(int u = 0; u < symbolCount; u++)
         UpdateIndicators(u);
+
+    UpdateMFE_MAE();
+    TrackLiveEvolution_V7();
+    CheckForExits_V7();            // Trailing Stop + Ratchet + Break-Even
+    ExecuteOvernightHedge_V7();    // EOD Hedge @ 20h55 GMT+0
+    ProcessPythonCommands();
+    ProcessActionPlan();
+    ExportStatus_V7();
+    DiagnoseBBFilter();
+    OnTimerTrading();
 
     if(TimeCurrent() - lastTickExport >= 1) {
         ExportTickData_V7();
@@ -492,13 +550,42 @@ void OnTimer() {
         if(symbolCount > 0) ST_ExportStatus(st_syms, symbolCount);
         lastTickExport = TimeCurrent();
     }
+}
 
+//+------------------------------------------------------------------+
+//| OnTradeTransaction : Détection instantanée des fermetures        |
+//+------------------------------------------------------------------+
+void OnTradeTransaction(const MqlTradeTransaction& trans,
+                        const MqlTradeRequest& request,
+                        const MqlTradeResult& result)
+{
+    // Quand un deal est ajouté à l'historique
+    if(trans.type == TRADE_TRANSACTION_DEAL_ADD)
+    {
+        if(HistoryDealSelect(trans.deal))
+        {
+            long entry = HistoryDealGetInteger(trans.deal, DEAL_ENTRY);
+            // Si c'est une sortie de position
+            if(entry == DEAL_ENTRY_OUT)
+            {
+                Log.Info("EVENT", "Fermeture detectee — Mise à jour Dashboard immédiate");
+                ExportTradeHistory_V7();
+                ExportStatus_V7();
+            }
+        }
+    }
+}
+
+void OnTimerTrading() {
     if(!tradingEnabled || manualPause) return;
-    if(dailyTradeCount >= MaxDailyTrades || PositionsTotal() >= MaxOpenPositions) return;
+    if(dailyTradeCount >= MaxDailyTrades) return;
 
     for(int i = 0; i < symbolCount; i++) {
         if(!symbols[i].enabled) continue;
         if(TimeCurrent() - symbols[i].lastTradeTime < 60) continue;
+
+        // ── V14/V23 : Limite de positions PAR instrument ──
+        if(CountPositionsBySymbol(symbols[i].symbol) >= MaxOpenPositions) continue;
 
         // ── V7.18 : Filtre News — bloquer si news_block.json indique blocked ──
         if(Enable_NewsFilter && IsNewsBlocked(symbols[i].symbol)) {
@@ -729,9 +816,8 @@ void ApplyPreNewsSecure() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        // V7.20: Protect ALL positions during news (EA + manual)
-        long posMagic = PositionGetInteger(POSITION_MAGIC);
-        if(posMagic != MagicNumber && posMagic != 0) continue; // skip other EAs only
+        // V7.25+: Sécurise TOUTES les positions (EA, Manuel, EOD, Python)
+        // Aucun filtre Magic Number — Protection universelle avant news
         if(IsBEDone(ticket)) continue;
 
         string sym   = PositionGetString(POSITION_SYMBOL);
@@ -898,24 +984,41 @@ void ExecuteOvernightHedge_V7() {
     string dominantLbl  = (dominantType == ORDER_TYPE_BUY)    ? "BUY"  : "SELL";
     string hedgeLbl     = (hedgeType    == ORDER_TYPE_BUY)    ? "BUY"  : "SELL";
 
-    double point  = SymbolInfoDouble(sym, SYMBOL_POINT);
-    int    digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
-    double stopLv = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * point;
-    double buffer = StopLevelBuffer_Pts * point;
+    double point   = SymbolInfoDouble(sym, SYMBOL_POINT);
+    int    digits  = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+    double stopLv  = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * point;
+    double buffer  = StopLevelBuffer_Pts * point;
 
-    // Switch magic temporairement pour isolation
+    // ── V7.25 MATH : Base risk comme le reste du système ──────────────────────────
+    // SL = ATR * 1.5 minimum (respiration suffisante même sur marché agité)
+    // TP = ATR * 15.0 (filet de sécurité lointain, le trailing est le vrai exit)
+    // LOT = 0.20% balance / (SL_distance en $ par lot)
+    // ──────────────────────────────────────────────────────────────────
+    double balance    = AccountInfoDouble(ACCOUNT_BALANCE);
+    double riskUSD    = balance * (RiskPerTrade_Pct / 100.0) * adaptiveLotMult;
+    double tickVal    = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
+    double tickSize   = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
+    double maxLotGold = MaxLot_Gold;
+
+    // SL Dominant : 1.5 * ATR (respiration) — minimum enforcé par broker
+    double slDistDom = MathMax(atr * EOD_Dominant_SL_ATR, stopLv + buffer);
+    // TP Dominant : Filet de sécurité lointain. Le trailing stop est le vrai exit.
+    double tpDistDom = MathMax(atr * EOD_Dominant_TP_ATR, stopLv + buffer);
+    // Lot DOM basé sur 0.20% de risque / distance SL
+    double lotDom    = NormalizeVolume_V7(sym, riskUSD / (slDistDom * tickVal / tickSize));
+    lotDom = MathMin(lotDom, maxLotGold);
+
+    // Switch magic pour isolation
     ulong mainMagic  = (ulong)MagicNumber;
     ulong hedgeMagic = (ulong)(MagicNumber + EOD_MagicOffset);
     trade.SetExpertMagicNumber(hedgeMagic);
 
     int placed = 0;
 
-    // --- 3 DOMINANTS ---
-    double slDistDom = MathMax(atr * EOD_Dominant_SL_ATR, stopLv + buffer);
-    double tpDistDom = MathMax(atr * EOD_Dominant_TP_ATR, stopLv + buffer);
+    // ─── 3 DOMINANTS ─────────────────────────────────────────────────────────────────
     for(int k = 0; k < EOD_Dominant_Count; k++) {
-        double ask = SymbolInfoDouble(sym, SYMBOL_ASK);
-        double bid = SymbolInfoDouble(sym, SYMBOL_BID);
+        double ask   = SymbolInfoDouble(sym, SYMBOL_ASK);
+        double bid   = SymbolInfoDouble(sym, SYMBOL_BID);
         double price = (dominantType == ORDER_TYPE_BUY) ? ask : bid;
         double sl, tp;
         if(dominantType == ORDER_TYPE_BUY) {
@@ -925,21 +1028,42 @@ void ExecuteOvernightHedge_V7() {
             sl = NormalizeDouble(price + slDistDom, digits);
             tp = NormalizeDouble(price - tpDistDom, digits);
         }
-        double lot = NormalizeVolume_V7(sym, EOD_Dominant_Lot);
+        string comment = "EOD_DOM" + IntegerToString(k+1) +
+                         "_SL" + DoubleToString(slDistDom, 0) +
+                         "_TP" + DoubleToString(tpDistDom, 0);
         bool ok = (dominantType == ORDER_TYPE_BUY)
-                    ? trade.Buy (lot, sym, price, sl, tp, "EOD_DOM " + IntegerToString(k+1))
-                    : trade.Sell(lot, sym, price, sl, tp, "EOD_DOM " + IntegerToString(k+1));
-        if(ok) placed++;
-        else   Log.Warn("EOD_HEDGE", "DOM " + dominantLbl + " #" + IntegerToString(k+1) +
-                        " KO code=" + IntegerToString(trade.ResultRetcode()));
+                    ? trade.Buy (lotDom, sym, price, sl, tp, comment)
+                    : trade.Sell(lotDom, sym, price, sl, tp, comment);
+        if(ok) {
+            placed++;
+            // ── Connexion au Ratchet Audit (V7.25) ──
+            if(trackedCount < MAX_TRACKED_TRADES) {
+                ulong dealTicket = trade.ResultDeal();
+                long  realPosId  = 0;
+                HistorySelect(TimeCurrent() - 10, TimeCurrent());
+                for(int d = HistoryDealsTotal()-1; d >= 0; d--) {
+                    ulong dt = HistoryDealGetTicket(d);
+                    if(dt == dealTicket) { realPosId = HistoryDealGetInteger(dt, DEAL_POSITION_ID); break; }
+                }
+                if(realPosId > 0) SaveTradeRiskState(realPosId, gidx, price, sl);
+            }
+        } else {
+            Log.Warn("EOD_HEDGE", "DOM " + dominantLbl + " #" + IntegerToString(k+1) +
+                     " KO code=" + IntegerToString(trade.ResultRetcode()));
+        }
     }
 
-    // --- 2 HEDGES (sens oppose, SL/TP ultra serres) ---
+    // ─── 2 HEDGES (sens opposé) ─────────────────────────────────────────────────────────
+    // SL/TP Hedge : Alignés sur les dominants pour une gestion de risque cohérente
     double slDistHdg = MathMax(atr * EOD_Hedge_SL_ATR, stopLv + buffer);
     double tpDistHdg = MathMax(atr * EOD_Hedge_TP_ATR, stopLv + buffer);
+    // Lot HDG : même risque 0.20%
+    double lotHdg    = NormalizeVolume_V7(sym, riskUSD / (slDistHdg * tickVal / tickSize));
+    lotHdg = MathMin(lotHdg, maxLotGold);
+
     for(int k = 0; k < EOD_Hedge_Count; k++) {
-        double ask = SymbolInfoDouble(sym, SYMBOL_ASK);
-        double bid = SymbolInfoDouble(sym, SYMBOL_BID);
+        double ask   = SymbolInfoDouble(sym, SYMBOL_ASK);
+        double bid   = SymbolInfoDouble(sym, SYMBOL_BID);
         double price = (hedgeType == ORDER_TYPE_BUY) ? ask : bid;
         double sl, tp;
         if(hedgeType == ORDER_TYPE_BUY) {
@@ -949,13 +1073,28 @@ void ExecuteOvernightHedge_V7() {
             sl = NormalizeDouble(price + slDistHdg, digits);
             tp = NormalizeDouble(price - tpDistHdg, digits);
         }
-        double lot = NormalizeVolume_V7(sym, EOD_Hedge_Lot);
+        string comment = "EOD_HDG" + IntegerToString(k+1) +
+                         "_SL" + DoubleToString(slDistHdg, 0) +
+                         "_TP" + DoubleToString(tpDistHdg, 0);
         bool ok = (hedgeType == ORDER_TYPE_BUY)
-                    ? trade.Buy (lot, sym, price, sl, tp, "EOD_HDG " + IntegerToString(k+1))
-                    : trade.Sell(lot, sym, price, sl, tp, "EOD_HDG " + IntegerToString(k+1));
-        if(ok) placed++;
-        else   Log.Warn("EOD_HEDGE", "HDG " + hedgeLbl + " #" + IntegerToString(k+1) +
-                        " KO code=" + IntegerToString(trade.ResultRetcode()));
+                    ? trade.Buy (lotHdg, sym, price, sl, tp, comment)
+                    : trade.Sell(lotHdg, sym, price, sl, tp, comment);
+        if(ok) {
+            placed++;
+            if(trackedCount < MAX_TRACKED_TRADES) {
+                ulong dealTicket = trade.ResultDeal();
+                long  realPosId  = 0;
+                HistorySelect(TimeCurrent() - 10, TimeCurrent());
+                for(int d = HistoryDealsTotal()-1; d >= 0; d--) {
+                    ulong dt = HistoryDealGetTicket(d);
+                    if(dt == dealTicket) { realPosId = HistoryDealGetInteger(dt, DEAL_POSITION_ID); break; }
+                }
+                if(realPosId > 0) SaveTradeRiskState(realPosId, gidx, price, sl);
+            }
+        } else {
+            Log.Warn("EOD_HEDGE", "HDG " + hedgeLbl + " #" + IntegerToString(k+1) +
+                     " KO code=" + IntegerToString(trade.ResultRetcode()));
+        }
     }
 
     // Restaurer magic EA principal
@@ -1031,8 +1170,8 @@ void ApplyBreakEven_V7() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        long posMagic = PositionGetInteger(POSITION_MAGIC);
-        if(posMagic != MagicNumber && posMagic != 0) continue;
+        // V7.25+: Break-Even universel (Main EA + EOD + Manuel)
+        // Aucun filtre Magic Number
 
         // Une seule fois par trade
         if(IsBEDone(ticket)) continue;
@@ -1162,53 +1301,88 @@ void DiagnoseBBFilter() {
 //=============================================================
 // 7. SAVE TRADE INDICATORS (Phase A++)
 //=============================================================
-void SaveTradeIndicators(long posId, int idx) {
+//=============================================================
+// 7. SAVE TRADE RISK STATE (Phase A - Ratchet Foundations)
+//=============================================================
+void SaveTradeRiskState(long posId, int idx, double requestedPrice, double slAtEntry) {
     if(trackedCount >= MAX_TRACKED_TRADES) {
         for(int k = 0; k < MAX_TRACKED_TRADES - 1; k++)
             trackedTrades[k] = trackedTrades[k+1];
         trackedCount = MAX_TRACKED_TRADES - 1;
     }
 
-    trackedTrades[trackedCount].positionId  = posId;
+    string sym = symbols[idx].symbol;
+    double totalVol   = 0.0;
+    double totalValue = 0.0;
+    
+    // 1. Récupération des données d'exécution VWAP (Institutional Fill-Aware)
+    HistorySelect(TimeCurrent() - 60, TimeCurrent());
+    for(int d = 0; d < HistoryDealsTotal(); d++) {
+        ulong dt = HistoryDealGetTicket(d);
+        if(HistoryDealGetInteger(dt, DEAL_POSITION_ID) == posId && 
+           HistoryDealGetInteger(dt, DEAL_ENTRY) == DEAL_ENTRY_IN) {
+            double price = HistoryDealGetDouble(dt, DEAL_PRICE);
+            double vol   = HistoryDealGetDouble(dt, DEAL_VOLUME);
+            totalValue += (price * vol);
+            totalVol   += vol;
+        }
+    }
+    
+    double fillPrice = (totalVol > 0) ? (totalValue / totalVol) : 0.0;
+    double lotSize   = totalVol;
+    
+    // Fallback si aucun deal trouvé (rare sur position_id)
+    if(fillPrice <= 0.0) {
+        if(PositionSelectByTicket((ulong)posId)) {
+            fillPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+            lotSize   = PositionGetDouble(POSITION_VOLUME);
+        }
+    }
+
+    // 2. Calcul du Risque Initial (1R) Immutable
+    double tickVal  = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
+    double tickSize = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
+    double point    = SymbolInfoDouble(sym, SYMBOL_POINT);
+    
+    double riskDistPoints = MathAbs(fillPrice - slAtEntry);
+    double riskUSD = lotSize * (riskDistPoints * tickVal / tickSize);
+
+    // 3. Stockage Immutable
+    trackedTrades[trackedCount].positionId         = posId;
+    trackedTrades[trackedCount].initialRiskUSD     = riskUSD;
+    trackedTrades[trackedCount].initialRiskDistance = riskDistPoints;
+    trackedTrades[trackedCount].entryFill          = fillPrice;
+    trackedTrades[trackedCount].slippage           = (requestedPrice > 0) ? MathAbs(fillPrice - requestedPrice) / point : 0.0;
+    
+    // Initialisation Ratchet
+    trackedTrades[trackedCount].lockedFloorR       = 0.0;
+    trackedTrades[trackedCount].highestLockedFloorR = 0.0;
+    trackedTrades[trackedCount].highestProfitR     = 0.0;
+    trackedTrades[trackedCount].maxDrawdownR       = 0.0;
+    trackedTrades[trackedCount].ratchetStage       = 0;
+    trackedTrades[trackedCount].lastRatchetUpdate  = TimeCurrent();
+    trackedTrades[trackedCount].virtualExitR       = -99.0;
+    trackedTrades[trackedCount].isVirtualClosed    = false;
+
+    // Heritage Indicateurs
     trackedTrades[trackedCount].rsi         = symbols[idx].lastRSI;
     trackedTrades[trackedCount].adx         = symbols[idx].lastADX;
     trackedTrades[trackedCount].atr         = symbols[idx].lastATR;
-    trackedTrades[trackedCount].spread      = SymbolInfoInteger(symbols[idx].symbol, SYMBOL_SPREAD);
-    trackedTrades[trackedCount].regime      = symbols[idx].superTrendDir;
+    trackedTrades[trackedCount].spread      = SymbolInfoInteger(sym, SYMBOL_SPREAD);
+    trackedTrades[trackedCount].regime      = (int)DetectRegime(idx);
     trackedTrades[trackedCount].session     = GetSessionName();
 
     MqlDateTime _dt; TimeToStruct(TimeCurrent(), _dt);
     trackedTrades[trackedCount].hour        = _dt.hour;
     trackedTrades[trackedCount].day_of_week = (_dt.day_of_week == 0) ? 6 : _dt.day_of_week - 1;
-
-    double _efBuf[1], _esBuf[1];
-    double _ef = 1.0, _es = 1.0;
-    if(CopyBuffer(symbols[idx].handle_ema_fast, 0, 0, 1, _efBuf) > 0) _ef = _efBuf[0];
-    if(CopyBuffer(symbols[idx].handle_ema_slow, 0, 0, 1, _esBuf) > 0) _es = _esBuf[0];
-    trackedTrades[trackedCount].ema_distance = (_es > 0.0) ? ((_ef - _es) / _es * 100.0) : 0.0;
     trackedTrades[trackedCount].confluence   = symbols[idx].currentConfluence;
-
-    // BB position at entry
-    double bbu[1], bbl[1];
-    double bb_u = 0.0, bb_l = 0.0, pos_bb = 1.0;
-    if(CopyBuffer(symbols[idx].handle_bb, UPPER_BAND, 0, 1, bbu) > 0 &&
-       CopyBuffer(symbols[idx].handle_bb, LOWER_BAND, 0, 1, bbl) > 0) {
-        bb_u = bbu[0];
-        bb_l = bbl[0];
-        double pr = SymbolInfoDouble(symbols[idx].symbol, SYMBOL_BID);
-        pos_bb = (pr > bb_u) ? 2.0 : (pr < bb_l) ? 0.0 : 1.0;
-    }
-    trackedTrades[trackedCount].bb_upper    = bb_u;
-    trackedTrades[trackedCount].bb_lower    = bb_l;
-    trackedTrades[trackedCount].bb_position = pos_bb;
-    trackedTrades[trackedCount].mfe         = 0.0;
-    trackedTrades[trackedCount].mae         = 0.0;
+    trackedTrades[trackedCount].partial_done = false;
 
     trackedCount++;
 
-    Log.Debug("TRACK", "Indicateurs saves PosID=" + (string)posId +
-              " RSI=" + DoubleToString(symbols[idx].lastRSI, 1) +
-              " ADX=" + DoubleToString(symbols[idx].lastADX, 1));
+    Log.Info("RATCHET_A", "1R LOCK: " + sym + " Risk=$" + DoubleToString(riskUSD, 2) + 
+             " | Fill:" + DoubleToString(fillPrice, (int)SymbolInfoInteger(sym, SYMBOL_DIGITS)) +
+             " | Slip:" + DoubleToString(trackedTrades[trackedCount-1].slippage, 1) + "pts");
 }
 
 string GetSessionName() {
@@ -1223,11 +1397,16 @@ string GetSessionName() {
 //=============================================================
 // 8. EXECUTE ENTRY
 //=============================================================
-void ExecuteEntry_V7(int idx, int signal) {
+void ExecuteEntry_V7(int idx, int signal, double lot_mult=1.0, double sl_mult=0.0, double tp_mult=0.0) {
     string sym      = symbols[idx].symbol;
     double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
-    double risk_val = balance * (RiskPerTrade_Pct / 100.0) * adaptiveLotMult;
-    double sl_dist  = symbols[idx].lastATR * ATR_SL_Multiplier;
+    
+    // Override multiples if provided by Python Brain
+    double final_sl_mult = (sl_mult > 0) ? sl_mult : ATR_SL_Multiplier;
+    double final_tp_mult = (tp_mult > 0) ? tp_mult : ATR_TP_Multiplier;
+    
+    double risk_val = balance * (RiskPerTrade_Pct / 100.0) * adaptiveLotMult * lot_mult;
+    double sl_dist  = symbols[idx].lastATR * final_sl_mult;
 
     double tick_val  = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
     double tick_size = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
@@ -1253,8 +1432,8 @@ void ExecuteEntry_V7(int idx, int signal) {
 
     sl_dist = MathMax(sl_dist, stopLevel + buffer);
     double sl = (signal == 1) ? (p - sl_dist) : (p + sl_dist);
-    double tp = (signal == 1) ? (p + symbols[idx].lastATR * ATR_TP_Multiplier)
-                              : (p - symbols[idx].lastATR * ATR_TP_Multiplier);
+    double tp = (signal == 1) ? (p + symbols[idx].lastATR * final_tp_mult)
+                              : (p - symbols[idx].lastATR * final_tp_mult);
 
     if(SimulationMode) {
         Log.Trade("SIM", "[SIM] " + sym + " " + (signal==1?"BUY":"SELL") +
@@ -1300,7 +1479,7 @@ void ExecuteEntry_V7(int idx, int signal) {
             }
         }
 
-        if(realPosId > 0) SaveTradeIndicators(realPosId, idx);
+        if(realPosId > 0) SaveTradeRiskState(realPosId, idx, p, sl);
 
         Log.Info("TRACK", "SaveIndicators Deal=" + (string)trade.ResultDeal() +
                  " Order=" + (string)trade.ResultOrder());
@@ -1346,6 +1525,20 @@ bool IsMLSignalOK(string symbol, int direction) {
 
     Log.Info("ML", "Confirme par ML (" + DoubleToString(proba, 2) + ")");
     return true;
+}
+
+//+------------------------------------------------------------------+
+//| Compte les positions ouvertes pour un symbole spécifique         |
+//+------------------------------------------------------------------+
+int CountPositionsBySymbol(string symbol) {
+    int count = 0;
+    for(int i = 0; i < PositionsTotal(); i++) {
+        if(posInfo.SelectByIndex(i)) {
+            if(posInfo.Symbol() == symbol && posInfo.Magic() == MagicNumber)
+                count++;
+        }
+    }
+    return count;
 }
 
 //=============================================================
@@ -1576,15 +1769,25 @@ void UpdateMFE_MAE() {
 
         double currentPnL = PositionGetDouble(POSITION_PROFIT)
                           + PositionGetDouble(POSITION_SWAP);
+        
+        // 1. Calcul du profit/perte en unités R
+        double currentR = (trackedTrades[k].initialRiskUSD > 0) ? (currentPnL / trackedTrades[k].initialRiskUSD) : 0.0;
 
-        if(currentPnL > trackedTrades[k].mfe)  trackedTrades[k].mfe = currentPnL;
-        if(currentPnL < -trackedTrades[k].mae) trackedTrades[k].mae = -currentPnL;
+        // 2. Update MFE (Maximum Favorable Excursion) en R
+        if(currentR > trackedTrades[k].highestProfitR) {
+            trackedTrades[k].highestProfitR = currentR;
+        }
+        
+        // 3. Update MAE (Maximum Adverse Excursion) en R
+        if(currentR < trackedTrades[k].maxDrawdownR) {
+            trackedTrades[k].maxDrawdownR = currentR;
+        }
     }
 }
 
 void CheckForExits_V7() {
     static datetime lastExitCheck = 0;
-    if(TimeCurrent() - lastExitCheck < 5) return;
+    if(TimeCurrent() - lastExitCheck < 1) return;
     lastExitCheck = TimeCurrent();
 
     HistorySelect(TimeCurrent() - 86400, TimeCurrent());
@@ -1615,8 +1818,20 @@ void CheckForExits_V7() {
                     double closedPnl = HistoryDealGetDouble(t, DEAL_PROFIT)
                                      + HistoryDealGetDouble(t, DEAL_SWAP);
                     for(int s = 0; s < symbolCount; s++) {
-                        if(symbols[s].symbol == closedSym && symbols[s].instrType == 0) {
+                        if(symbols[s].symbol == closedSym) {
                             UpdateGoldCooldown(s, closedPnl >= 0.0);
+                            for(int k = 0; k < trackedCount; k++) {
+                                if(trackedTrades[k].positionId == HistoryDealGetInteger(t, DEAL_POSITION_ID)) {
+                                    double actualExitR = (trackedTrades[k].initialRiskUSD > 0) ? (closedPnl / trackedTrades[k].initialRiskUSD) : 0.0;
+                                    double shadowExitR = (trackedTrades[k].isVirtualClosed) ? trackedTrades[k].virtualExitR : actualExitR;
+                                    double alphaR      = shadowExitR - actualExitR;
+                                    double effScore    = (trackedTrades[k].highestProfitR > 0) ? (actualExitR / trackedTrades[k].highestProfitR * 100.0) : 0.0;
+                                    bool isFalseLock = (trackedTrades[k].isVirtualClosed && (trackedTrades[k].highestProfitR - trackedTrades[k].virtualExitR >= 0.75));
+                                    string regStr = (trackedTrades[k].regime == 0) ? "NORMAL" : (trackedTrades[k].regime == 3) ? "EXPANSION" : "CHAOS";
+                                    Log.Info("RATCHET_FINAL", closedSym + " [" + regStr + "]" + " | Alpha:" + DoubleToString(alphaR, 2) + "R");
+                                    break;
+                                }
+                            }
                             break;
                         }
                     }
@@ -1626,10 +1841,12 @@ void CheckForExits_V7() {
     }
 
     ExportTradeHistory_V7();
-    ApplyManualProtection_V7(); // V7.21 — ajouter SL/TP aux trades manuels non proteges
-    ApplyPreNewsSecure();   // V7.18 — Sécuriser positions avant news
-    ApplyBreakEven_V7();    // V7.12 — Break-Even en premier
-    ApplyTrailingStop_V7(); // Trailing ensuite
+    ApplyManualProtection_V7(); 
+    ApplyPreNewsSecure();   
+    ApplyBreakEven_V7();    
+    ApplyScalingOut_V7();   
+    ApplyRatchetProfitLocks_V7(); 
+    ApplyTrailingStop_V7(); 
 }
 
 //=============================================================
@@ -1642,9 +1859,9 @@ void ApplyTrailingStop_V7() {
         ulong ticket = PositionGetTicket(i);
         if(ticket == 0) continue;
         if(!PositionSelectByTicket(ticket)) continue;
-        // V7.20: Trail ALL positions (EA + manual) — we are a team
-        long posMagic = PositionGetInteger(POSITION_MAGIC);
-        if(posMagic != MagicNumber && posMagic != 0) continue; // skip other EAs only
+        // V7.25+: Trail TOUTES les positions — aucun filtre Magic Number
+        // EA principal + EOD Hedge + Trades manuels + Signaux Python
+        // Seul critère : la position existe et a un ATR disponible
 
         string sym   = PositionGetString(POSITION_SYMBOL);
         int    ptype = (int)PositionGetInteger(POSITION_TYPE);
@@ -1655,47 +1872,250 @@ void ApplyTrailingStop_V7() {
         double atr   = 0.0;
 
         for(int j = 0; j < symbolCount; j++) {
-            if(symbols[j].symbol == sym) { atr = symbols[j].lastATR; break; }
+            if(StringFind(sym, symbols[j].symbol) >= 0) { atr = symbols[j].lastATR; break; }
         }
-        if(atr <= 0.0) continue;
+        
+        if(atr <= 0.0) {
+            // Tentative de secours : utiliser l'ATR du graphique actuel si c'est le même symbole
+            if(sym == _Symbol) atr = iATR(_Symbol, _Period, 14);
+            if(atr <= 0.0) {
+               static datetime lastLog = 0;
+               if(TimeCurrent()-lastLog > 60) { Log.Warn("TRAIL_SKIP", sym + " ATR indisponible"); lastLog=TimeCurrent(); }
+               continue;
+            }
+        }
 
-        double point      = SymbolInfoDouble(sym, SYMBOL_POINT);
-        int    digits     = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
-        double newSL      = sl;
+        double point  = SymbolInfoDouble(sym, SYMBOL_POINT);
+        int    digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+        double newSL  = sl;
 
-        bool isGold = (sym == "GOLD" || sym == "XAUUSD" || sym == "XAUUSDm");
+        // ── V7.25: PROFILS TRAILING ──────────────────────────────────────────
+        // Philosophie : SL initial = respiration. TP = filet lointain.
+        // Le TRAILING STOP est le vrai exit. Il colle le prix une fois activé.
+        // Aucune fermeture forcée par drawdown — le trailing gère seul.
+        // ─────────────────────────────────────────────────────────────────────
+        bool isGold  = (sym == "GOLD" || sym == "XAUUSD" || sym == "XAUUSDm");
+        bool isIndex = (StringFind(sym, "Volatility") >= 0 ||
+                        StringFind(sym, "US30") >= 0 ||
+                        StringFind(sym, "US500") >= 0);
+
         double activation, step;
+
         if(isGold) {
-            activation = MathMin(atr * 0.10, 2.00);
-            step       = MathMin(atr * 0.07, 1.50);
-        } else {
+            // GOLD : Hyper-réactif — protection immédiate
+            activation = atr * 0.10; // Se déclenche dès 10% ATR
+            step       = atr * 0.08; // Colle à 8% ATR
+        }
+        else if(isIndex) {
+            // INDEX/Volatility : Protection equilibree (Re-stabilise apres test Sticky)
+            activation = atr * 0.20; 
+            step       = atr * 0.12; 
+        }
+        else {
+            // FOREX : Paramètres inputs standards
             activation = atr * Trail_ATR_Activation;
             step       = atr * Trail_ATR_Step;
         }
 
         if(ptype == POSITION_TYPE_BUY) {
-            if(cur - open < activation) continue;
+            if((cur - open) < activation) continue;
             double candidate = NormalizeDouble(cur - step, digits);
-            if(candidate < sl) continue;  // FIX: Changed <= to < (allow equal SL)
+            if(candidate <= sl) continue;
             newSL = candidate;
         }
         else if(ptype == POSITION_TYPE_SELL) {
-            if(open - cur < activation) continue;
+            if((open - cur) < activation) continue;
             double candidate = NormalizeDouble(cur + step, digits);
-            if(sl > 0.0 && candidate > sl) continue;  // FIX: Changed >= to > (allow equal SL)
+            if(sl > 0.0 && candidate >= sl) continue;
             newSL = candidate;
         }
         else continue;
+        
+        static datetime lastDbg = 0;
+        if(TimeCurrent() - lastDbg > 10) {
+           Log.Info("TRAIL_DBG", sym + " PnL=" + DoubleToString(MathAbs(cur-open)/point, 0) + " pts | TargetSL=" + DoubleToString(newSL, digits));
+           lastDbg = TimeCurrent();
+        }
 
         double stopLevel = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * point;
         if(ptype == POSITION_TYPE_BUY  && (cur - newSL) < stopLevel) continue;
         if(ptype == POSITION_TYPE_SELL && (newSL - cur) < stopLevel) continue;
 
         if(trade.PositionModify(ticket, newSL, tp)) {
-            Log.Info("TRAIL", sym +
-                     " SL: " + DoubleToString(sl,    digits) +
-                     " -> "  + DoubleToString(newSL, digits) +
-                     (isGold ? " [GOLD-TIGHT]" : ""));
+            Log.Trade("TRAIL_V725", sym + " SL: " + DoubleToString(sl, digits) + " -> " + DoubleToString(newSL, digits));
+        } else {
+            // Si rejeté (probablement Stop Level), on essaie avec un buffer plus large
+            int ret = trade.ResultRetcode();
+            if(ret == 10016 || ret == 10014) { // Invalid stops
+                double minDist = (stopLevel + 5*point);
+                if(ptype == POSITION_TYPE_BUY)  newSL = NormalizeDouble(cur - minDist, digits);
+                if(ptype == POSITION_TYPE_SELL) newSL = NormalizeDouble(cur + minDist, digits);
+                trade.PositionModify(ticket, newSL, tp);
+            }
+        }
+    }
+}
+
+//=============================================================
+// 13c. RATCHET ENGINE (Phase B/C)
+//=============================================================
+void InitRatchetProfiles_V7() {
+    // ── PROFILE GOLD (User Specification) ──
+    profileGold.symbol      = "GOLD";
+    profileGold.activationR = 0.10;
+    profileGold.trailGapR   = 0.15;
+    profileGold.locks[0]    = 0.5;
+    profileGold.locks[1]    = 1.0;
+    profileGold.locks[2]    = 1.5;
+    profileGold.locks[3]    = 2.5;
+    profileGold.lockCount   = 4;
+
+    // ── PROFILE DEFAULT (Forex/Indices) ──
+    profileDefault.symbol      = "DEFAULT";
+    profileDefault.activationR = 0.50;
+    profileDefault.trailGapR   = 0.50;
+    profileDefault.locks[0]    = 1.0;
+    profileDefault.locks[1]    = 2.0;
+    profileDefault.lockCount   = 2;
+}
+
+void ApplyScalingOut_V7() {
+    for(int k = 0; k < trackedCount; k++) {
+        if(trackedTrades[k].partial_done) continue;
+        
+        ulong t = (ulong)trackedTrades[k].positionId;
+        if(!PositionSelectByTicket(t)) continue;
+
+        string sym = PositionGetString(POSITION_SYMBOL);
+        double curPnL = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+        double riskUSD = trackedTrades[k].initialRiskUSD;
+        
+        if(riskUSD <= 0) continue;
+
+        // Scaling Out à 1R (Encaisser 50% du lot)
+        if(curPnL >= riskUSD) {
+            double vol = PositionGetDouble(POSITION_VOLUME);
+            if(vol > 0.01) {
+                double closeVol = NormalizeVolume_V7(sym, vol * 0.5);
+                if(trade.PositionClosePartial(t, closeVol)) {
+                    trackedTrades[k].partial_done = true;
+                    Log.Info("SCALE_OUT", sym + " 1R Atteint — 50% encaissé (" + DoubleToString(closeVol, 2) + " lots)");
+                    
+                    // Après scaling out, on force le BE si pas déjà fait
+                    double open = PositionGetDouble(POSITION_PRICE_OPEN);
+                    double sl   = PositionGetDouble(POSITION_SL);
+                    double tp   = PositionGetDouble(POSITION_TP);
+                    int    type = (int)PositionGetInteger(POSITION_TYPE);
+                    int    digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+                    double point = SymbolInfoDouble(sym, SYMBOL_POINT);
+                    
+                    double newSL = (type == POSITION_TYPE_BUY) ? (open + 2*point) : (open - 2*point);
+                    newSL = NormalizeDouble(newSL, digits);
+                    
+                    trade.PositionModify(t, newSL, tp);
+                }
+            }
+        }
+    }
+}
+
+void ApplyRatchetProfitLocks_V7() {
+    // Phase B : Toujours actif pour le logging (Shadow Mode), 
+    // mais ne modifie le SL que si USE_RATCHET_ENGINE = true
+
+    for(int k = 0; k < trackedCount; k++) {
+        long posId = trackedTrades[k].positionId;
+        if(!PositionSelectByTicket((ulong)posId)) continue;
+        
+        string sym = PositionGetString(POSITION_SYMBOL);
+        double curPnL = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+        double riskUSD = trackedTrades[k].initialRiskUSD;
+        
+        if(riskUSD <= 0) continue;
+        
+        double currentR = curPnL / riskUSD;
+        
+        // Sélection du profil
+        RatchetProfile p = (sym == "GOLD" || sym == "XAUUSD") ? profileGold : profileDefault;
+        
+        // 1. Logique RATCHET LOCKS (Floors)
+        double newFloorR = trackedTrades[k].lockedFloorR;
+        int    newStage  = trackedTrades[k].ratchetStage;
+        
+        for(int i = 0; i < p.lockCount; i++) {
+            if(currentR >= p.locks[i] && p.locks[i] > newFloorR) {
+                newFloorR = p.locks[i];
+                newStage  = i + 1;
+            }
+        }
+        
+        // 2. Logique TRAILING DYNAMIQUE (Gap)
+        double dynamicTrailR = -999.0;
+        if(currentR >= p.activationR) {
+            dynamicTrailR = currentR - p.trailGapR;
+        }
+        
+        // 3. EFFECTIVE STOP (Max entre Trail et Floor)
+        double effectiveStopR = MathMax(dynamicTrailR, newFloorR);
+        
+        if(effectiveStopR > -900.0) {
+            // Conversion R -> Prix
+            int    type   = (int)PositionGetInteger(POSITION_TYPE);
+            double fill   = trackedTrades[k].entryFill;
+            double dist   = trackedTrades[k].initialRiskDistance;
+            double currentSL = PositionGetDouble(POSITION_SL);
+            double tp     = PositionGetDouble(POSITION_TP);
+            int    digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+            
+            double targetSL = 0.0;
+            if(type == POSITION_TYPE_BUY)  targetSL = fill + (effectiveStopR * dist);
+            if(type == POSITION_TYPE_SELL) targetSL = fill - (effectiveStopR * dist);
+            
+            targetSL = NormalizeDouble(targetSL, digits);
+            
+            // On ne peut que monter le stop (Ratchet)
+            bool canMove = false;
+            if(type == POSITION_TYPE_BUY  && targetSL > currentSL) canMove = true;
+            if(type == POSITION_TYPE_SELL && (currentSL == 0 || targetSL < currentSL)) canMove = true;
+            
+            if(canMove) {
+                if(USE_RATCHET_ENGINE) {
+                    // ... (Code existant pour modification réelle) ...
+                    if(trade.PositionModify(posId, targetSL, tp)) {
+                        trackedTrades[k].lockedFloorR = newFloorR;
+                        trackedTrades[k].ratchetStage = newStage;
+                        trackedTrades[k].lastRatchetUpdate = TimeCurrent();
+                        if(newFloorR > trackedTrades[k].highestLockedFloorR)
+                            trackedTrades[k].highestLockedFloorR = newFloorR;
+                            
+                        Log.Info("RATCHET", sym + " Stage " + (string)newStage + " LOCK: " + 
+                                 DoubleToString(effectiveStopR, 2) + "R (SL: " + DoubleToString(targetSL, digits) + ")");
+                    }
+                } else {
+                    // MODE SHADOW : Audit seulement
+                    if(!trackedTrades[k].isVirtualClosed) {
+                        Log.Info("RATCHET_SHADOW", sym + " WOULD LOCK " + DoubleToString(effectiveStopR, 2) + "R (Stage " + (string)newStage + ")" +
+                                 " | CurrentR: " + DoubleToString(currentR, 2) + 
+                                 " | ExitEff: " + DoubleToString((currentR > 0 && trackedTrades[k].highestProfitR > 0) ? (currentR / trackedTrades[k].highestProfitR * 100.0) : 100.0, 1) + "%");
+                        
+                        trackedTrades[k].lockedFloorR = newFloorR;
+                        trackedTrades[k].ratchetStage = newStage;
+                    }
+                }
+            }
+            
+            // 4. DETECTION SORTIE VIRTUELLE (Shadow Exit)
+            if(!USE_RATCHET_ENGINE && !trackedTrades[k].isVirtualClosed && effectiveStopR > -900.0) {
+                double bid = SymbolInfoDouble(sym, SYMBOL_BID);
+                double ask = SymbolInfoDouble(sym, SYMBOL_ASK);
+                bool hit = (type == POSITION_TYPE_BUY)  ? (bid <= targetSL) 
+                                                        : (ask >= targetSL);
+                if(hit) {
+                    trackedTrades[k].virtualExitR   = effectiveStopR;
+                    trackedTrades[k].isVirtualClosed = true;
+                    Log.Warn("RATCHET_AUDIT", sym + " SHADOW EXIT at " + DoubleToString(effectiveStopR, 2) + "R");
+                }
+            }
         }
     }
 }
@@ -1704,14 +2124,19 @@ void ApplyTrailingStop_V7() {
 // 14. EXPORT TRADE HISTORY
 //=============================================================
 void ExportTradeHistory_V7() {
-    HistorySelect(TimeCurrent() - 86400 * 30, TimeCurrent());
+    HistorySelect(TimeCurrent() - 86400 * 365, TimeCurrent()); // Historique sur 1 an au lieu de 30 jours
+    
+    // --- FIX V7.23 : Collecter les tickets d'abord car HistorySelectByPosition casse la boucle ---
+    int totalDeals = HistoryDealsTotal();
+    ulong dealTickets[];
+    ArrayResize(dealTickets, totalDeals);
+    for(int i = 0; i < totalDeals; i++) dealTickets[i] = HistoryDealGetTicket(i);
+
     string j = "[";
     int count = 0;
 
-    for(int i = 0; i < HistoryDealsTotal(); i++) {
-        ulong t = HistoryDealGetTicket(i);
-        // V7.19 FIX: Export global des trades manuels/robots pour la consolidation ML
-        // if(HistoryDealGetInteger(t, DEAL_MAGIC) != MagicNumber)    continue;
+    for(int i = 0; i < totalDeals; i++) {
+        ulong t = dealTickets[i];
         if(HistoryDealGetInteger(t, DEAL_ENTRY) != DEAL_ENTRY_OUT) continue;
 
         if(count > 0) j += ",";
@@ -1737,6 +2162,9 @@ void ExportTradeHistory_V7() {
                 break;
             }
         }
+        
+        // Rétablir la sélection globale pour que l'itération suivante ne plante pas
+        HistorySelect(TimeCurrent() - 86400 * 365, TimeCurrent());
 
         double entryRSI        = 50.0;
         double entryADX        = 25.0;
@@ -1884,16 +2312,17 @@ void ExportStatus_V7() {
     for(int i = 0; i < PositionsTotal(); i++) {
         ulong t = PositionGetTicket(i);
         if(t > 0 && PositionSelectByTicket(t)) {
-            if(PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
-                if(count > 0) j += ",";
-                j += "{\"ticket\":"  + (string)t +
-                     ",\"sym\":\""   + PositionGetString(POSITION_SYMBOL) + "\"" +
-                     ",\"type\":\""  + (PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY?"BUY":"SELL") + "\"" +
-                     ",\"lot\":"     + DoubleToString(PositionGetDouble(POSITION_VOLUME), 2) +
-                     ",\"price\":"   + DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN), 5) +
-                     ",\"pnl\":"     + DoubleToString(PositionGetDouble(POSITION_PROFIT), 2) + "}";
-                count++;
-            }
+            // V7.25+: Affiche TOUT sur le Dashboard (EA + Manuel + EOD)
+            if(count > 0) j += ",";
+            j += "{\"ticket\":"  + (string)t +
+                 ",\"sym\":\""   + PositionGetString(POSITION_SYMBOL) + "\"" +
+                 ",\"type\":\""  + (PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY?"BUY":"SELL") + "\"" +
+                 ",\"lot\":"     + DoubleToString(PositionGetDouble(POSITION_VOLUME), 2) +
+                 ",\"price\":"   + DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN), 5) +
+                 ",\"sl\":"      + DoubleToString(PositionGetDouble(POSITION_SL), 5) +
+                 ",\"pnl\":"     + DoubleToString(PositionGetDouble(POSITION_PROFIT), 2) + 
+                 ",\"magic\":"   + (string)PositionGetInteger(POSITION_MAGIC) + "}";
+            count++;
         }
     }
     j += "]}";
@@ -1938,14 +2367,21 @@ void ProcessActionPlan() {
     string asset    = ExtractJSONValue_V7(content, "asset");
     if(decision == "" || asset == "") return;
     
+    // NEW: Extract dynamic risk/RR parameters from Python Brain
+    double l_mult  = StringToDouble(ExtractJSONValue_V7(content, "lot_multiplier"));
+    double s_mult  = StringToDouble(ExtractJSONValue_V7(content, "sl_mult"));
+    double t_mult  = StringToDouble(ExtractJSONValue_V7(content, "tp_mult"));
+    
+    if(l_mult <= 0) l_mult = 1.0;
+    
     int idx = -1;
     for(int i=0; i<symbolCount; i++) if(symbols[i].symbol == asset) { idx = i; break; }
     if(idx == -1) return;
     
     int sig = (decision == "BUY") ? 1 : (decision == "SELL") ? -1 : 0;
     if(sig != 0) {
-        Log.Trade("AI_BRIDGE", "AI Signal Received: " + decision + " on " + asset);
-        ExecuteEntry_V7(idx, sig);
+        Log.Trade("AI_BRIDGE", "AI Signal Received: " + decision + " on " + asset + " | LotMult: " + DoubleToString(l_mult, 2));
+        ExecuteEntry_V7(idx, sig, l_mult, s_mult, t_mult);
     }
 }
 
@@ -2038,9 +2474,6 @@ MarketRegime DetectRegime(int idx) {
     return REGIME_RANGING;
 }
 
-//=============================================================
-// 18. SYMBOL MANAGEMENT
-//=============================================================
 void RegisterSymbol(string sym, bool en, int type) {
     if(symbolCount < MAX_SYMBOLS && SymbolSelect(sym, true)) {
         symbols[symbolCount].symbol    = sym;
@@ -2124,37 +2557,73 @@ bool CheckSpreadOK(int i) {
 //=============================================================
 void ProcessPythonCommands() {
     string path = "python_commands.json";
-    if(!FileIsExist(path)) return;
+    if(!FileIsExist(path, FILE_COMMON)) return;
 
-    int h = FileOpen(path, FILE_READ | FILE_TXT | FILE_ANSI);
+    int h = FileOpen(path, FILE_READ | FILE_TXT | FILE_ANSI | FILE_COMMON);
     if(h == INVALID_HANDLE) return;
 
     string content = "";
     while(!FileIsEnding(h)) content += FileReadString(h);
     FileClose(h);
-
-    if(StringFind(content, "modify_sl") < 0) return;
+    
+    if(StringLen(content) < 10) return;
 
     int pos = 0;
-    while((pos = StringFind(content, "\"action\":\"modify_sl\"", pos)) >= 0) {
-        int tpos  = StringFind(content, "\"ticket\":", pos);
-        int slpos = StringFind(content, "\"new_sl\":",  pos);
-        if(tpos > 0 && slpos > 0) {
-            long   ticket = StringToInteger(StringSubstr(content, tpos  + 9, 15));
-            double newSL  = StringToDouble( StringSubstr(content, slpos + 9, 10));
-            if(PositionSelectByTicket(ticket)) {
+    while((pos = StringFind(content, "\"action\"", pos)) >= 0) {
+        string sub = StringSubstr(content, pos, 200); 
+        string action = ExtractJSONValue_V7(sub, "action");
+        
+        if(action == "modify_sl") {
+            long   ticket = StringToInteger(ExtractJSONValue_V7(sub, "ticket"));
+            double newSL  = StringToDouble( ExtractJSONValue_V7(sub, "new_sl"));
+            if(ticket > 0 && PositionSelectByTicket(ticket)) {
                 if(trade.PositionModify(ticket, newSL, PositionGetDouble(POSITION_TP))) {
-                    Log.Trade("RATCHET", "SL modifie #" + (string)ticket +
-                              " -> " + DoubleToString(newSL, 5));
+                    Log.Trade("RATCHET", "SL modifie #" + (string)ticket + " -> " + DoubleToString(newSL, 5));
+                }
+            }
+        }
+        else if(action == "close") {
+            long ticket = StringToInteger(ExtractJSONValue_V7(sub, "ticket"));
+            if(ticket > 0 && PositionSelectByTicket(ticket)) {
+                if(trade.PositionClose(ticket)) {
+                    Log.Trade("REMOTE_CLOSE", "Fermeture manuelle #" + (string)ticket);
                 }
             }
         }
         pos += 20;
     }
+    FileDelete(path, FILE_COMMON);
+}
 
-    int hw = FileOpen(path, FILE_WRITE | FILE_TXT | FILE_ANSI);
-    if(hw != INVALID_HANDLE) {
-        FileWriteString(hw, "{\"commands\":[],\"processed\":[]}");
-        FileClose(hw);
+//+------------------------------------------------------------------+
+//| V7.25+ : Synchronisation stricte du compteur journalier          |
+//+------------------------------------------------------------------+
+void SyncDailyTradeCount_V7() {
+    MqlDateTime dt;
+    TimeCurrent(dt);
+    // Minuit aujourd'hui (Broker Time)
+    datetime midnight = StringToTime(IntegerToString(dt.year) + "." +
+                                    IntegerToString(dt.mon)  + "." +
+                                    IntegerToString(dt.day)  + " 00:00");
+    
+    HistorySelect(midnight, TimeCurrent());
+    int totalDeals = HistoryDealsTotal();
+    int count = 0;
+    
+    for(int i = 0; i < totalDeals; i++) {
+        ulong ticket = HistoryDealGetTicket(i);
+        if(ticket == 0) continue;
+        
+        long entry = HistoryDealGetInteger(ticket, DEAL_ENTRY);
+        if(entry != DEAL_ENTRY_IN) continue; // On ne compte que les entrées
+        
+        long magic = HistoryDealGetInteger(ticket, DEAL_MAGIC);
+        // On ne compte que les trades du bot (Sniper), pas les manuels ni le Hedge
+        if(magic == MagicNumber) {
+            count++;
+        }
     }
+    
+    dailyTradeCount = count;
+    Log.Info("SYNC", "Compteur journalier synchronisé : " + IntegerToString(count) + " trades détectés aujourd'hui.");
 }

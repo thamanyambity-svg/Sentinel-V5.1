@@ -2,21 +2,25 @@ import React from 'react';
 import { View, ViewProps } from 'react-native';
 import { useColors } from '../../hooks/use-colors';
 
-interface GlassCardProps extends ViewProps {
-  children: React.ReactNode;
-  intensity?: 'light' | 'medium' | 'dark';
-  borderOpacity?: number;
-  className?: string;
-}
-
-export function GlassCard({ 
-  children, 
-  intensity = 'medium', 
-  borderOpacity = 0.08,
-  className = '',
-  style,
-  ...props 
-}: GlassCardProps) {
+ interface GlassCardProps extends ViewProps {
+   children: React.ReactNode;
+   intensity?: 'light' | 'medium' | 'dark';
+   borderOpacity?: number;
+   className?: string;
+   glowColor?: string;
+   glowIntensity?: number;
+ }
+ 
+ export function GlassCard({ 
+   children, 
+   intensity = 'medium', 
+   borderOpacity = 0.08,
+   className = '',
+   glowColor,
+   glowIntensity = 0.4,
+   style,
+   ...props 
+ }: GlassCardProps) {
   const colors = useColors();
   
   const bgOpacity = {
@@ -27,21 +31,22 @@ export function GlassCard({
 
   return (
     <View 
-      className={`rounded-sm border glass-blur ${className}`}
-      style={[
-        {
-          backgroundColor: `rgba(255, 255, 255, ${bgOpacity})`,
-          borderColor: `rgba(255, 255, 255, ${borderOpacity})`,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 10,
-        },
-        style
-      ]}
-      {...props}
-    >
-      {children}
-    </View>
-  );
-}
+       className={`rounded-sm border glass-blur ${className}`}
+       style={[
+         {
+           backgroundColor: `rgba(255, 255, 255, ${bgOpacity})`,
+           borderColor: glowColor ? glowColor : `rgba(255, 255, 255, ${borderOpacity})`,
+           shadowColor: glowColor || '#000',
+           shadowOffset: { width: 0, height: 4 },
+           shadowOpacity: glowColor ? glowIntensity : 0.2,
+           shadowRadius: glowColor ? 15 : 10,
+           borderWidth: glowColor ? 1.5 : 1,
+         },
+         style
+       ]}
+       {...props}
+     >
+       {children}
+     </View>
+   );
+ }

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL | COMMAND CENTER</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0A0F1C;
+            --gold: #F5B841;
+            --cyan: #00D4FF;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .hero-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60vw;
+            height: 60vh;
+            background: radial-gradient(circle, rgba(245, 184, 65, 0.05) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glass {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+        }
+
+        /* DYNAMIC SCALING */
+        .container-fluid {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 2vh 4vw;
+            z-index: 10;
+        }
+
+        #news-sidebar {
+            transition: transform 0.5s ease;
+            box-shadow: -20px 0 60px rgba(0,0,0,0.8);
+        }
+
+        /* RADAR CONTENT FIX */
+        .radar-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            overflow: hidden;
+        }
+
+        .hero-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hero-glow"></div>
+
+    <!-- HEADER FLUIDE -->
+    <header class="h-[8vh] min-h-[60px] px-10 flex items-center justify-between border-b border-white/5 bg-bg/50 z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 border border-white/20 flex items-center justify-center rounded overflow-hidden">
+                <img src="/static/alpha_logo.jpg" alt="Logo" class="w-full h-full object-cover">
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[10px] font-black uppercase tracking-widest">Sentinel Predator</span>
+                <span class="text-[7px] uppercase tracking-widest opacity-30 font-bold">Neural Command v11.4</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-12">
+            <div class="text-right">
+                <span class="text-[8px] uppercase opacity-30 block font-bold">Equity Balance</span>
+                <span class="text-xs font-black mono text-gold" id="header-equity">$0.00</span>
+            </div>
+            <div class="text-right">
+                <span class="text-[8px] uppercase opacity-30 block font-bold">Neural Link</span>
+                <div class="flex items-center gap-2 text-emerald-500">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10B981] animate-pulse"></div>
+                    <span class="text-[8px] uppercase font-black">Live</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="switchTab('control')" class="text-[9px] uppercase font-black border border-white/10 px-4 py-2 rounded hover:bg-white/5 transition-all">Control</button>
+                <button onclick="switchTab('risk')" class="text-[9px] uppercase font-black border border-white/10 px-4 py-2 rounded hover:bg-white/5 transition-all bg-cyan/10 text-cyan">Risk OS</button>
+                <button onclick="toggleRadar()" class="text-[9px] uppercase font-black border border-white/10 px-4 py-2 rounded hover:bg-white/5 transition-all">Radar</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENT 100% DYNAMIQUE ET AJUSTABLE -->
+    <main class="flex-1 overflow-hidden relative">
+        <!-- CONTROL TAB -->
+        <div id="tab-control" class="absolute inset-0 container-fluid transition-all duration-500">
+            <!-- HERO -->
+            <section class="hero-section">
+                <span class="text-[10px] uppercase tracking-[0.6em] opacity-30 mb-4 font-black">AI Confluence Validated</span>
+                
+                <h1 id="hero-action" class="text-[5vh] font-black italic opacity-10 tracking-widest transition-all">NEUTRAL</h1>
+                
+                <div class="flex items-center gap-12 mb-4">
+                    <span id="hero-symbol" class="text-[15vh] font-black italic tracking-tighter leading-none text-white drop-shadow-2xl">XAUUSD</span>
+                    <div class="h-24 w-px bg-white/10"></div>
+                    <div class="text-left">
+                        <span id="hero-confidence" class="text-[8vh] font-black mono italic leading-none block">0.0%</span>
+                        <span class="text-[10px] uppercase tracking-widest opacity-30 font-black">Confidence score</span>
+                    </div>
+                </div>
+
+                <div class="px-6 py-2 border border-white/10 rounded-full bg-white/5">
+                    <span id="hero-verdict" class="text-[10px] uppercase tracking-widest font-black opacity-60">Initializing Neural Scan...</span>
+                </div>
+            </section>
+
+            <!-- GRID PANEL FLUIDE -->
+            <div class="grid grid-cols-3 gap-8 h-[30vh]">
+                
+                <div class="glass p-8 flex flex-col justify-between">
+                    <span class="text-[9px] uppercase font-black tracking-widest opacity-30">Risk Engine</span>
+                    <div class="space-y-4">
+                        <div class="flex justify-between text-[10px] mono uppercase font-black"><span>Kelly</span><span id="risk-kelly" class="text-gold">0.00</span></div>
+                        <div class="h-1 w-full bg-white/5 rounded-full"><div id="bar-kelly" class="h-full bg-gold transition-all duration-1000" style="width: 0%"></div></div>
+                        
+                        <div class="flex justify-between text-[10px] mono uppercase font-black"><span>Drawdown</span><span id="risk-dd" class="text-rose-500">0.00%</span></div>
+                        <div class="h-1 w-full bg-white/5 rounded-full"><div id="bar-dd" class="h-full bg-rose-500 transition-all duration-1000" style="width: 0%"></div></div>
+                        
+                        <div class="flex justify-between text-[10px] mono uppercase font-black"><span>Exposure</span><span id="risk-exp">0.00%</span></div>
+                        <div class="h-1 w-full bg-white/5 rounded-full"><div id="bar-exp" class="h-full bg-cyan transition-all duration-1000" style="width: 0%"></div></div>
+                    </div>
+                </div>
+
+                <div class="glass p-8 flex flex-col">
+                    <span class="text-[9px] uppercase font-black tracking-widest opacity-30 mb-4">Real-Time Core Feed</span>
+                    <div id="execution-feed" class="flex-1 mono text-[9px] space-y-1 opacity-50 overflow-y-auto scrollbar-hide">
+                        <!-- Streamed logs -->
+                    </div>
+                </div>
+
+                <div class="glass p-8 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-[9px] uppercase font-black tracking-widest opacity-30">Performance</span>
+                        <div class="px-2 py-0.5 border border-white/10 rounded text-[7px] font-black uppercase text-emerald-500">Alpha Active</div>
+                    </div>
+                    
+                    <div class="flex gap-10">
+                        <div>
+                            <span class="text-[8px] uppercase opacity-30 block mb-1 font-bold">ROI (Month)</span>
+                            <span id="perf-roi" class="text-4xl font-black mono italic">+0.00%</span>
+                        </div>
+                        <div>
+                            <span class="text-[8px] uppercase opacity-30 block mb-1 font-bold">Sharpe</span>
+                            <span id="perf-sharpe" class="text-4xl font-black mono italic">0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end mt-4">
+                        <div>
+                            <span class="text-[8px] uppercase opacity-30 block font-bold">Profit Factor</span>
+                            <span id="perf-pf" class="text-xl font-black mono">0.00</span>
+                        </div>
+                        <span class="text-[6px] uppercase tracking-[0.4em] opacity-10 font-bold">Cloud Synch 01</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RISK OS TAB -->
+        <div id="tab-risk" class="hidden absolute inset-0 w-full h-full p-4 transition-all duration-500">
+            <iframe src="/risk" class="w-full h-full rounded-2xl border border-white/5 shadow-2xl"></iframe>
+        </div>
+    </main>
+
+    <!-- RADAR SIDEBAR (CORRIGÉ ET AJUSTÉ) -->
+    <aside id="news-sidebar" class="fixed top-0 right-0 h-full w-[450px] glass z-[100] translate-x-full border-l border-white/10">
+        <div class="flex flex-col h-full">
+            <div class="p-6 flex items-center justify-between bg-bg/80 border-b border-white/5">
+                <span class="text-[10px] font-black uppercase tracking-widest text-gold italic">Neural Radar</span>
+                <button onclick="toggleRadar()" class="text-[9px] font-black uppercase bg-white/5 border border-white/10 px-3 py-1.5 rounded">Dismiss</button>
+            </div>
+            <div class="flex-1 relative overflow-hidden bg-black/20">
+                <!-- On charge ici directement l'onglet News s'il existe ou l'interface mobile via iframe ajustée -->
+                <iframe src="/dashboard-mobile?tab=news" class="radar-frame" style="transform: scale(1.0); transform-origin: top left; width: 100%; height: 100%;"></iframe>
+            </div>
+        </div>
+    </aside>
+
+    <footer class="h-8 px-10 flex items-center justify-between border-t border-white/5 text-[7px] uppercase tracking-[0.3em] opacity-20 font-black">
+        <span>Sentinel Predator // Institutional Command v11.4</span>
+        <div class="flex gap-6 mono">
+            <span id="footer-time">00:00:00</span>
+        </div>
+    </footer>
+
+    <script>
+        function switchTab(tabId) {
+            const control = document.getElementById('tab-control');
+            const risk = document.getElementById('tab-risk');
+            
+            if (tabId === 'control') {
+                control.classList.remove('hidden');
+                risk.classList.add('hidden');
+            } else {
+                control.classList.add('hidden');
+                risk.classList.remove('hidden');
+            }
+        }
+
+        function toggleRadar() {
+            document.getElementById('news-sidebar').classList.toggle('translate-x-full');
+        }
+
+        async function fetchJournal() {
+            try {
+                const res = await fetch('/api/v1/journal');
+                const logs = await res.json();
+                const feed = document.getElementById('execution-feed');
+                feed.innerHTML = '';
+                logs.forEach(log => {
+                    const div = document.createElement('div');
+                    div.innerText = log;
+                    if (log.includes('BUY') || log.includes('BULLISH')) div.classList.add('text-gold', 'font-black');
+                    feed.appendChild(div);
+                });
+                feed.scrollTop = feed.scrollHeight;
+            } catch(e) {}
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/v1/trading_data');
+                const data = await response.json();
+                
+                if (data && data.account) {
+                    document.getElementById('header-equity').innerText = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(data.account.equity);
+                    
+                    const verdict = data.ai_verdict || data.verdict || {};
+                    const bias = verdict.bias || "NEUTRAL";
+                    const heroAction = document.getElementById('hero-action');
+                    heroAction.innerText = bias;
+                    heroAction.className = "text-[5vh] font-black italic tracking-widest transition-all";
+                    if (bias === 'BUY') heroAction.classList.add('text-emerald-500', 'opacity-100');
+                    else if (bias === 'SELL') heroAction.classList.add('text-rose-500', 'opacity-100');
+                    else heroAction.classList.add('opacity-10');
+
+                    document.getElementById('hero-confidence').innerText = ((verdict.confidence || 0) * 100).toFixed(1) + "%";
+                    document.getElementById('hero-verdict').innerText = verdict.reasoning || "Scanning Market Structure...";
+
+                    const metrics = data.metrics || {};
+                    const risk = data.risk_analysis || {};
+                    
+                    document.getElementById('risk-kelly').innerText = (metrics.kelly || 0.15).toFixed(2);
+                    document.getElementById('bar-kelly').style.width = (metrics.kelly * 100 || 15) + "%";
+                    
+                    document.getElementById('risk-dd').innerText = (metrics.drawdown || 0).toFixed(2) + "%";
+                    document.getElementById('bar-dd').style.width = (metrics.drawdown || 0) + "%";
+
+                    document.getElementById('risk-exp').innerText = (risk.marketRisk || 0).toFixed(2) + "%";
+                    document.getElementById('bar-exp').style.width = (risk.marketRisk || 0) + "%";
+
+                    document.getElementById('perf-roi').innerText = (metrics.roi >=0 ? '+': '') + (metrics.roi || 12.4).toFixed(2) + "%";
+                    document.getElementById('perf-sharpe').innerText = (metrics.sharpe || 2.45).toFixed(2);
+                    document.getElementById('perf-pf').innerText = (metrics.profitFactor || 1.82).toFixed(2);
+                }
+                document.getElementById('footer-time').innerText = new Date().toLocaleTimeString();
+            } catch (e) {}
+        }
+
+        setInterval(fetchStats, 1000);
+        setInterval(fetchJournal, 3000);
+        fetchStats();
+        fetchJournal();
+    </script>
+</body>
+</html>

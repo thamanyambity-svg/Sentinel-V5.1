@@ -1,0 +1,31 @@
+{
+    "health_score": 75,
+    "health_decomposition": {
+        "expectancy": 5,
+        "regime": 25,
+        "exposure": 20,
+        "correlation": 15,
+        "drawdown": 10
+    },
+    "regime": "NORMAL",
+    "open_risk_pct": 0.0,
+    "risk_used_pct": 0.0,
+    "expectancy_r": 0.0,
+    "win_rate": 0.0,
+    "risk_of_ruin": 36.79,
+    "kelly_fraction": 0.007,
+    "drawdown_r": 0.0,
+    "execution_quality": {
+        "fill_quality": 95,
+        "spread_stress": "low",
+        "slippage_drift": "normal"
+    },
+    "status": "\ud83d\udfe2 FULL ON",
+    "breakers": {
+        "daily_dd": false,
+        "edge_decay": false,
+        "chaos": false
+    },
+    "setup_performance": {},
+    "last_update": "2026-04-28 21:55:41"
+}

@@ -1,20 +1,18 @@
-
 import logging
-import math
+from bot.risk.config import *
 
 logger = logging.getLogger("BOT")
 
 class RiskManager:
-    def __init__(self, max_grid_layers=3, risk_per_trade=0.015, max_daily_loss=0.10):
+    def __init__(self, max_grid_layers=3, risk_per_trade=BASE_TRADE_RISK_PCT, max_daily_loss=0.05):
         """
-        RiskManager : Gestionnaire de risque institutionnel.
-        max_grid_layers : Nombre max d'étages pour le Safe Grid.
-        risk_per_trade : % du capital risqué par trade (Ex: 1.5%).
-        max_daily_loss : Seuil de perte journalière (Kill Switch).
+        RiskManager : Gestionnaire de risque institutionnel (Refined).
         """
         self.max_layers = max_grid_layers
         self.risk_pct = risk_per_trade
         self.max_dd = max_daily_loss
+        self.portfolio_risk_cap = MAX_TOTAL_RISK_PCT
+        self.correlation_limit = CORRELATED_RISK_PCT
         
         # Mapping approximatif de la valeur du point (à affiner si nécessaire)
         # Pour les indices synthétiques Deriv, souvent 1 point = 1 USD pour 1 lot standard
@@ -96,6 +94,79 @@ class RiskManager:
             })
             
         return levels
+
+    def get_total_portfolio_risk(self, positions):
+        """
+        Calcule le risque total engagé sur le portefeuille (sum of SL in $).
+        """
+        total_risk = 0.0
+        for pos in positions:
+            # Estimation du risque si SL présent
+            pnl = float(pos.get("profit", 0))
+            # Si le PnL est très négatif, on considère qu'on a déjà "mangé" du risque
+            # Mais institutionnellement, on regarde le Risk @ SL.
+            # Ici on va simplifier : chaque position ouverte consomme self.risk_pct
+            total_risk += self.risk_pct 
+        return total_risk
+
+    def check_correlation(self, asset, positions):
+        """
+        Vérifie si un actif corrélé est déjà ouvert.
+        Ex: GOLD et XAUUSD, ou plusieurs Volatility indices.
+        """
+        correlations = {
+            "GOLD": ["XAUUSD", "GOLD"],
+            "VOLATILITY": ["Volatility 10 Index", "Volatility 25 Index", "Volatility 50 Index", "Volatility 75 Index", "Volatility 100 Index"]
+        }
+        
+        asset_group = None
+        for group, members in correlations.items():
+            if asset in members:
+                asset_group = members
+                break
+        
+        if not asset_group:
+            return False
+            
+        for pos in positions:
+            if pos.get("symbol") in asset_group:
+                return True
+        return False
+
+    def get_dynamic_risk_multiplier(self, asset, positions, ai_confidence=1.0):
+        """
+        Calcule le multiplicateur de risque final (Brain -> Muscle).
+        """
+        multiplier = 1.0
+        
+        # 1. Cap Portefeuille (2.0% max)
+        current_risk = self.get_total_portfolio_risk(positions)
+        if current_risk >= self.portfolio_risk_cap:
+            logger.warning(f"🚨 PORTFOLIO RISK CAP REACHED ({current_risk*100:.2f}%)")
+            return 0.0
+            
+        # 2. Corrélation (0.75% -> 0.35%)
+        if self.check_correlation(asset, positions):
+            logger.info(f"🔗 Correlation detected for {asset}. Reducing risk.")
+            multiplier *= (self.correlation_limit / self.risk_pct) # ~0.46
+            
+        # 3. AI Confidence Modifier (Senior Adjustment: +/- 0.15R only if > 0.85)
+        if ai_confidence > 0.85:
+            # Booster léger
+            multiplier *= 1.15
+        elif ai_confidence < 0.50:
+            multiplier *= 0.5
+            
+        return round(multiplier, 2)
+
+    def get_atr_capped_distances(self, atr, sl_mult=1.5, tp_mult=3.0):
+        """
+        Applique les garde-fous ATR (Floor 0.5, Ceiling 3.5).
+        """
+        final_sl_mult = max(0.5, min(sl_mult, 3.5))
+        final_tp_mult = tp_mult # TP is less dangerous than SL for ruin risk
+        
+        return final_sl_mult, final_tp_mult
 
     def check_health(self, initial_balance, current_balance):
         """

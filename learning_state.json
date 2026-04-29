@@ -1,0 +1,4183 @@
+{
+  "version": "v1.0",
+  "last_update": 1777471209,
+  "last_retrain": 1777464584,
+  "n1_weights": {
+    "sym:Volatility 100 Index": {
+      "weight": 0.4,
+      "wr": 40.0,
+      "avg_pnl": 0.39,
+      "n": 10,
+      "consec_wins": 0,
+      "consec_losses": 5
+    },
+    "session:OFF": {
+      "weight": 0.7,
+      "wr": 50.0,
+      "avg_pnl": -0.04,
+      "n": 18,
+      "consec_wins": 0,
+      "consec_losses": 3
+    },
+    "hour:15h": {
+      "weight": 1.5,
+      "wr": 100.0,
+      "avg_pnl": 5.61,
+      "n": 6,
+      "consec_wins": 5,
+      "consec_losses": 0
+    },
+    "sym:Volatility 100 Index|session:OFF": {
+      "weight": 0.4,
+      "wr": 40.0,
+      "avg_pnl": 0.39,
+      "n": 10,
+      "consec_wins": 0,
+      "consec_losses": 5
+    },
+    "sym:Volatility 100 Index|hour:15h": {
+      "weight": 1.5,
+      "wr": 100.0,
+      "avg_pnl": 7.13,
+      "n": 3,
+      "consec_wins": 3,
+      "consec_losses": 0
+    },
+    "sym:USDJPY": {
+      "weight": 1.5,
+      "wr": 100.0,
+      "avg_pnl": 4.09,
+      "n": 3,
+      "consec_wins": 3,
+      "consec_losses": 0
+    },
+    "sym:USDJPY|session:OFF": {
+      "weight": 1.5,
+      "wr": 100.0,
+      "avg_pnl": 4.09,
+      "n": 3,
+      "consec_wins": 3,
+      "consec_losses": 0
+    },
+    "sym:USDJPY|hour:15h": {
+      "weight": 1.5,
+      "wr": 100.0,
+      "avg_pnl": 4.09,
+      "n": 3,
+      "consec_wins": 3,
+      "consec_losses": 0
+    },
+    "hour:18h": {
+      "weight": 0.3,
+      "wr": 14.3,
+      "avg_pnl": -5.3,
+      "n": 7,
+      "consec_wins": 0,
+      "consec_losses": 5
+    },
+    "sym:Volatility 100 Index|hour:18h": {
+      "weight": 0.45,
+      "wr": 25.0,
+      "avg_pnl": -3.61,
+      "n": 4,
+      "consec_wins": 0,
+      "consec_losses": 3
+    },
+    "sym:XAUUSD": {
+      "weight": 1.232,
+      "wr": 57.1,
+      "avg_pnl": -2.16,
+      "n": 7,
+      "consec_wins": 4,
+      "consec_losses": 0
+    },
+    "sym:XAUUSD|session:OFF": {
+      "weight": 0.9,
+      "wr": 40.0,
+      "avg_pnl": -3.37,
+      "n": 5,
+      "consec_wins": 2,
+      "consec_losses": 0
+    },
+    "sym:XAUUSD|hour:18h": {
+      "weight": 0.3,
+      "wr": 0.0,
+      "avg_pnl": -7.55,
+      "n": 3,
+      "consec_wins": 0,
+      "consec_losses": 3
+    },
+    "hour:12h": {
+      "weight": 1.071,
+      "wr": 57.1,
+      "avg_pnl": 0.64,
+      "n": 7,
+      "consec_wins": 2,
+      "consec_losses": 0
+    },
+    "sym:XAUUSD|hour:12h": {
+      "weight": 1.5,
+      "wr": 100.0,
+      "avg_pnl": 1.88,
+      "n": 4,
+      "consec_wins": 4,
+      "consec_losses": 0
+    },
+    "sym:Volatility 100 Index|hour:12h": {
+      "weight": 0.3,
+      "wr": 0.0,
+      "avg_pnl": -1.03,
+      "n": 3,
+      "consec_wins": 0,
+      "consec_losses": 3
+    }
+  },
+  "n2_accuracy": 0.689,
+  "n2_trained_on": 3549,
+  "n3_episodes": [
+    {
+      "id": "4fc13596",
+      "ts": 1777361997,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 29.09,
+      "outcome": "win",
+      "intensity": 1.0,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $29.09 sur USDJPY en OFF",
+      "relevance": 0.9587408278603261
+    },
+    {
+      "id": "b0d9eb18",
+      "ts": 1777323539,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 634.0,
+      "outcome": "win",
+      "intensity": 1.0,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "18h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $634.00 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.9446208164237463
+    },
+    {
+      "id": "b0e111de",
+      "ts": 1777323538,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 665.0,
+      "outcome": "win",
+      "intensity": 1.0,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "18h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $665.00 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.9446204519867732
+    },
+    {
+      "id": "06979a53",
+      "ts": 1777323537,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 680.0,
+      "outcome": "win",
+      "intensity": 1.0,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "18h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $680.00 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.9446200875499408
+    },
+    {
+      "id": "658bbf4a",
+      "ts": 1777446757,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -16.72,
+      "outcome": "loss",
+      "intensity": 0.836,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $16.72 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.8281503642661352
+    },
+    {
+      "id": "5bb8b9bb",
+      "ts": 1777454402,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -16.28,
+      "outcome": "loss",
+      "intensity": 0.814,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $16.28 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.8087387618761968
+    },
+    {
+      "id": "6cccac71",
+      "ts": 1777323306,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -15.88,
+      "outcome": "loss",
+      "intensity": 0.794,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $15.88 sur USDJPY en OFF | heure habituellement non rentable",
+      "relevance": 0.7499615096887952
+    },
+    {
+      "id": "2533529e",
+      "ts": 1777322154,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -15.88,
+      "outcome": "loss",
+      "intensity": 0.794,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $15.88 sur USDJPY en OFF | heure habituellement non rentable",
+      "relevance": 0.7496282675215673
+    },
+    {
+      "id": "6151029a",
+      "ts": 1777322378,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -15.16,
+      "outcome": "loss",
+      "intensity": 0.758,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $15.16 sur USDJPY en OFF | heure habituellement non rentable",
+      "relevance": 0.7157019322192693
+    },
+    {
+      "id": "ffcd821c",
+      "ts": 1777378642,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -14.28,
+      "outcome": "loss",
+      "intensity": 0.714,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $14.28 sur USDJPY en OFF",
+      "relevance": 0.6889510002755976
+    },
+    {
+      "id": "d9db5490",
+      "ts": 1777378574,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -14.28,
+      "outcome": "loss",
+      "intensity": 0.714,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $14.28 sur USDJPY en OFF",
+      "relevance": 0.6889329261808843
+    },
+    {
+      "id": "95a56d08",
+      "ts": 1777376734,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -14.26,
+      "outcome": "loss",
+      "intensity": 0.713,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $14.26 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.6874798350585394
+    },
+    {
+      "id": "2eaa5d11",
+      "ts": 1777377748,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -14.18,
+      "outcome": "loss",
+      "intensity": 0.709,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $14.18 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.6838904938588798
+    },
+    {
+      "id": "cfd45ad6",
+      "ts": 1777454461,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -13.33,
+      "outcome": "loss",
+      "intensity": 0.666,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $13.33 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.661710412535706
+    },
+    {
+      "id": "f4120365",
+      "ts": 1777454461,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -13.33,
+      "outcome": "loss",
+      "intensity": 0.666,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $13.33 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.661710412535706
+    },
+    {
+      "id": "e6fabb11",
+      "ts": 1777064455,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -13.34,
+      "outcome": "loss",
+      "intensity": 0.667,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $13.34 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.5701292642640778
+    },
+    {
+      "id": "97c2fb76",
+      "ts": 1777064455,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -13.34,
+      "outcome": "loss",
+      "intensity": 0.667,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $13.34 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.5701292642640778
+    },
+    {
+      "id": "f961d79f",
+      "ts": 1777245979,
+      "symbol": "GBPUSD",
+      "type": "sell",
+      "pnl": 12.24,
+      "outcome": "win",
+      "intensity": 0.612,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "GBPUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $12.24 sur GBPUSD en OFF",
+      "relevance": 0.5610655583689427
+    },
+    {
+      "id": "0c73cf10",
+      "ts": 1777380240,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -10.89,
+      "outcome": "loss",
+      "intensity": 0.544,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $10.89 sur USDJPY en OFF",
+      "relevance": 0.5252387642137666
+    },
+    {
+      "id": "ac553f73",
+      "ts": 1777245918,
+      "symbol": "GBPUSD",
+      "type": "sell",
+      "pnl": 11.4,
+      "outcome": "win",
+      "intensity": 0.57,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "GBPUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $11.40 sur GBPUSD en OFF",
+      "relevance": 0.5225487614837367
+    },
+    {
+      "id": "844cc478",
+      "ts": 1777380179,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -10.53,
+      "outcome": "loss",
+      "intensity": 0.526,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $10.53 sur USDJPY en OFF",
+      "relevance": 0.5078475885971627
+    },
+    {
+      "id": "572f0a16",
+      "ts": 1777458890,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -10.07,
+      "outcome": "loss",
+      "intensity": 0.504,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $10.07 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.5016102047943058
+    },
+    {
+      "id": "64b6cf5e",
+      "ts": 1777362185,
+      "symbol": "EURUSD",
+      "type": "buy",
+      "pnl": -9.84,
+      "outcome": "loss",
+      "intensity": 0.492,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "EURUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $9.84 sur EURUSD en OFF",
+      "relevance": 0.47173470139204077
+    },
+    {
+      "id": "3044106e",
+      "ts": 1777064536,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -10.36,
+      "outcome": "loss",
+      "intensity": 0.518,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $10.36 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.44278289055541487
+    },
+    {
+      "id": "37a6fb32",
+      "ts": 1777463762,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -8.14,
+      "outcome": "loss",
+      "intensity": 0.407,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $8.14 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.40583224339236984
+    },
+    {
+      "id": "47ea5029",
+      "ts": 1777460621,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -8.06,
+      "outcome": "loss",
+      "intensity": 0.403,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $8.06 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.40135705859240794
+    },
+    {
+      "id": "b1bb5522",
+      "ts": 1777460621,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -8.06,
+      "outcome": "loss",
+      "intensity": 0.403,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $8.06 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.40135705859240794
+    },
+    {
+      "id": "97b0a672",
+      "ts": 1777248601,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -8.28,
+      "outcome": "loss",
+      "intensity": 0.414,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "0h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $8.28 sur XAUUSD en OFF | heure habituellement non rentable",
+      "relevance": 0.3799284797870788
+    },
+    {
+      "id": "b91252fc",
+      "ts": 1777409912,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -7.56,
+      "outcome": "loss",
+      "intensity": 0.378,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "18h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.56 sur XAUUSD en OFF | heure habituellement non rentable",
+      "relevance": 0.3691656383771356
+    },
+    {
+      "id": "7bac7046",
+      "ts": 1777409912,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -7.56,
+      "outcome": "loss",
+      "intensity": 0.378,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "18h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.56 sur XAUUSD en OFF | heure habituellement non rentable",
+      "relevance": 0.3691656383771356
+    },
+    {
+      "id": "d743f325",
+      "ts": 1777281720,
+      "symbol": "USDJPY",
+      "type": "buy",
+      "pnl": -7.91,
+      "outcome": "loss",
+      "intensity": 0.396,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "LONDON",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.91 sur USDJPY en LONDON",
+      "relevance": 0.3680830725522057
+    },
+    {
+      "id": "8c4bc174",
+      "ts": 1777409912,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -7.52,
+      "outcome": "loss",
+      "intensity": 0.376,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "18h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.52 sur XAUUSD en OFF | heure habituellement non rentable",
+      "relevance": 0.36721238103122483
+    },
+    {
+      "id": "8d65d4eb",
+      "ts": 1777409913,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -7.4,
+      "outcome": "loss",
+      "intensity": 0.37,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.40 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.36135274840424825
+    },
+    {
+      "id": "633a98c9",
+      "ts": 1777248662,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -7.83,
+      "outcome": "loss",
+      "intensity": 0.392,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "0h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.83 sur XAUUSD en OFF | heure habituellement non rentable",
+      "relevance": 0.35974750984363735
+    },
+    {
+      "id": "fa40c631",
+      "ts": 1777281787,
+      "symbol": "USDJPY",
+      "type": "buy",
+      "pnl": -7.72,
+      "outcome": "loss",
+      "intensity": 0.386,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "LONDON",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.72 sur USDJPY en LONDON",
+      "relevance": 0.3587973198154458
+    },
+    {
+      "id": "f2c9ae48",
+      "ts": 1777398566,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 7.29,
+      "outcome": "win",
+      "intensity": 0.364,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "15h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $7.29 sur Volatility 100 Index en OFF",
+      "relevance": 0.35394013370871963
+    },
+    {
+      "id": "6f9c0db1",
+      "ts": 1777058430,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -8.29,
+      "outcome": "loss",
+      "intensity": 0.414,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "18h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $8.29 sur XAUUSD en OFF | ADX faible = tendance molle | heure habituellement non rentable",
+      "relevance": 0.3530517273364744
+    },
+    {
+      "id": "56ebf48e",
+      "ts": 1777398491,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 7.23,
+      "outcome": "win",
+      "intensity": 0.362,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "15h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $7.23 sur Volatility 100 Index en OFF",
+      "relevance": 0.3519852227943767
+    },
+    {
+      "id": "ad0d6f2f",
+      "ts": 1777281856,
+      "symbol": "USDJPY",
+      "type": "buy",
+      "pnl": -7.54,
+      "outcome": "loss",
+      "intensity": 0.377,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "LONDON",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.54 sur USDJPY en LONDON",
+      "relevance": 0.35044090794058175
+    },
+    {
+      "id": "1160ad28",
+      "ts": 1777280013,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -7.31,
+      "outcome": "loss",
+      "intensity": 0.365,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $7.31 sur Volatility 100 Index en OFF",
+      "relevance": 0.33904513185594054
+    },
+    {
+      "id": "e78db576",
+      "ts": 1777463762,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -6.8,
+      "outcome": "loss",
+      "intensity": 0.34,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.80 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.33902447850959644
+    },
+    {
+      "id": "3fb51b2d",
+      "ts": 1777380373,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 6.95,
+      "outcome": "win",
+      "intensity": 0.348,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $6.95 sur Volatility 100 Index en OFF",
+      "relevance": 0.3360155682045691
+    },
+    {
+      "id": "3a88bc14",
+      "ts": 1777378023,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -6.96,
+      "outcome": "loss",
+      "intensity": 0.348,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.96 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.33571106251898447
+    },
+    {
+      "id": "a3a170e1",
+      "ts": 1777398328,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 6.88,
+      "outcome": "win",
+      "intensity": 0.344,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "15h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $6.88 sur Volatility 100 Index en OFF",
+      "relevance": 0.3344621615588425
+    },
+    {
+      "id": "65790db5",
+      "ts": 1777362826,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.71,
+      "outcome": "loss",
+      "intensity": 0.336,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.71 sur Volatility 100 Index en OFF",
+      "relevance": 0.32223996376881775
+    },
+    {
+      "id": "13bb5eaf",
+      "ts": 1777380308,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 6.63,
+      "outcome": "win",
+      "intensity": 0.332,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $6.63 sur Volatility 100 Index en OFF",
+      "relevance": 0.3205585377642859
+    },
+    {
+      "id": "5fe66623",
+      "ts": 1777380437,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 6.61,
+      "outcome": "win",
+      "intensity": 0.331,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $6.61 sur Volatility 100 Index en OFF",
+      "relevance": 0.3196089060658819
+    },
+    {
+      "id": "28ea8c53",
+      "ts": 1777373867,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": 6.57,
+      "outcome": "win",
+      "intensity": 0.329,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $6.57 sur Volatility 100 Index en OFF",
+      "relevance": 0.31687352926398443
+    },
+    {
+      "id": "f1cb0750",
+      "ts": 1777362890,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.6,
+      "outcome": "loss",
+      "intensity": 0.33,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.60 sur Volatility 100 Index en OFF",
+      "relevance": 0.31649349325919557
+    },
+    {
+      "id": "cf121bff",
+      "ts": 1777279381,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -6.75,
+      "outcome": "loss",
+      "intensity": 0.338,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.75 sur XAUUSD en OFF",
+      "relevance": 0.31388853712424497
+    },
+    {
+      "id": "44802ecd",
+      "ts": 1777373125,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": -6.5,
+      "outcome": "loss",
+      "intensity": 0.325,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.50 sur Volatility 100 Index en OFF",
+      "relevance": 0.3129313693017393
+    },
+    {
+      "id": "a6929804",
+      "ts": 1777245301,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.82,
+      "outcome": "loss",
+      "intensity": 0.341,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.82 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.3125380992139994
+    },
+    {
+      "id": "15628d68",
+      "ts": 1777322109,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.59,
+      "outcome": "loss",
+      "intensity": 0.33,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.59 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.3115529390102205
+    },
+    {
+      "id": "7a882b84",
+      "ts": 1777245535,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.78,
+      "outcome": "loss",
+      "intensity": 0.339,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.78 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.3107330822093515
+    },
+    {
+      "id": "744076f1",
+      "ts": 1777245369,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.6,
+      "outcome": "loss",
+      "intensity": 0.33,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.60 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.30246415995826303
+    },
+    {
+      "id": "293e0630",
+      "ts": 1777405201,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.19,
+      "outcome": "loss",
+      "intensity": 0.309,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.19 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.3012302714383278
+    },
+    {
+      "id": "a0c875e6",
+      "ts": 1777362626,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.18,
+      "outcome": "loss",
+      "intensity": 0.309,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.18 sur Volatility 100 Index en OFF",
+      "relevance": 0.29632281566903956
+    },
+    {
+      "id": "76fa6a4c",
+      "ts": 1777463762,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -5.94,
+      "outcome": "loss",
+      "intensity": 0.297,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $5.94 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.2961478532863239
+    },
+    {
+      "id": "009fa25d",
+      "ts": 1777375812,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 6.13,
+      "outcome": "win",
+      "intensity": 0.306,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $6.13 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.294942514116253
+    },
+    {
+      "id": "d5c2cccc",
+      "ts": 1777405298,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.04,
+      "outcome": "loss",
+      "intensity": 0.302,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.04 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.2944173024320134
+    },
+    {
+      "id": "3c77ceae",
+      "ts": 1777396840,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 6.05,
+      "outcome": "win",
+      "intensity": 0.302,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "15h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $6.05 sur Volatility 100 Index en OFF",
+      "relevance": 0.29345815000826186
+    },
+    {
+      "id": "d75a1e80",
+      "ts": 1777244401,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.32,
+      "outcome": "loss",
+      "intensity": 0.316,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.32 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.28952420213987456
+    },
+    {
+      "id": "bcc2ef11",
+      "ts": 1777244780,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.29,
+      "outcome": "loss",
+      "intensity": 0.315,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.29 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.2886501894060368
+    },
+    {
+      "id": "eb88d0f9",
+      "ts": 1777459337,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -5.67,
+      "outcome": "loss",
+      "intensity": 0.283,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $5.67 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.2817066881983349
+    },
+    {
+      "id": "e733774f",
+      "ts": 1777244712,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -6.0,
+      "outcome": "loss",
+      "intensity": 0.3,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $6.00 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.2748977303736899
+    },
+    {
+      "id": "cc738f59",
+      "ts": 1777402841,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": 5.18,
+      "outcome": "win",
+      "intensity": 0.259,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $5.18 sur Volatility 100 Index en OFF",
+      "relevance": 0.25225772537541513
+    },
+    {
+      "id": "83b298c2",
+      "ts": 1777373059,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 5.21,
+      "outcome": "win",
+      "intensity": 0.261,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $5.21 sur USDJPY en OFF",
+      "relevance": 0.2513015622292496
+    },
+    {
+      "id": "d85e85b7",
+      "ts": 1777372998,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 5.19,
+      "outcome": "win",
+      "intensity": 0.26,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $5.19 sur USDJPY en OFF",
+      "relevance": 0.2503328296048814
+    },
+    {
+      "id": "310f81db",
+      "ts": 1777064071,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": -5.74,
+      "outcome": "loss",
+      "intensity": 0.287,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $5.74 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.24528164855720325
+    },
+    {
+      "id": "f2b5afbe",
+      "ts": 1777397026,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 5.01,
+      "outcome": "win",
+      "intensity": 0.251,
+      "fingerprint": {
+        "rsi_bucket": "high",
+        "adx_bucket": "strong",
+        "hour_bucket": "15h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $5.01 sur USDJPY en OFF | forte tendance confirmée",
+      "relevance": 0.24391815061235664
+    },
+    {
+      "id": "90dbe415",
+      "ts": 1777244288,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -5.11,
+      "outcome": "loss",
+      "intensity": 0.256,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "21h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $5.11 sur USDJPY en OFF | heure habituellement non rentable",
+      "relevance": 0.2345410271682594
+    },
+    {
+      "id": "3baf4d32",
+      "ts": 1777469361,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 4.67,
+      "outcome": "win",
+      "intensity": 0.233,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $4.67 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.23283388438477207
+    },
+    {
+      "id": "b11757b4",
+      "ts": 1777064673,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -4.9,
+      "outcome": "loss",
+      "intensity": 0.245,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $4.90 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.20943540953066486
+    },
+    {
+      "id": "04c223f3",
+      "ts": 1777242958,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -4.53,
+      "outcome": "loss",
+      "intensity": 0.227,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "21h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $4.53 sur USDJPY en OFF | heure habituellement non rentable",
+      "relevance": 0.2078652398180392
+    },
+    {
+      "id": "b64a22a5",
+      "ts": 1777380744,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 4.31,
+      "outcome": "win",
+      "intensity": 0.215,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $4.31 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.20762554106476308
+    },
+    {
+      "id": "9113e3c0",
+      "ts": 1777378676,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 3.93,
+      "outcome": "win",
+      "intensity": 0.197,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.93 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.1900912148286433
+    },
+    {
+      "id": "99a10285",
+      "ts": 1777396949,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 3.76,
+      "outcome": "win",
+      "intensity": 0.188,
+      "fingerprint": {
+        "rsi_bucket": "high",
+        "adx_bucket": "strong",
+        "hour_bucket": "15h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.76 sur USDJPY en OFF | forte tendance confirmée",
+      "relevance": 0.1826902393729048
+    },
+    {
+      "id": "08a17e09",
+      "ts": 1777462424,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 3.56,
+      "outcome": "win",
+      "intensity": 0.178,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.56 sur XAUUSD en OFF",
+      "relevance": 0.17739768882464838
+    },
+    {
+      "id": "49a179ed",
+      "ts": 1777396812,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 3.51,
+      "outcome": "win",
+      "intensity": 0.175,
+      "fingerprint": {
+        "rsi_bucket": "high",
+        "adx_bucket": "strong",
+        "hour_bucket": "15h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.51 sur USDJPY en OFF | forte tendance confirmée",
+      "relevance": 0.170048415535549
+    },
+    {
+      "id": "5fc9991f",
+      "ts": 1777376345,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 3.52,
+      "outcome": "win",
+      "intensity": 0.176,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.52 sur XAUUSD en OFF",
+      "relevance": 0.16967502598745327
+    },
+    {
+      "id": "708249d8",
+      "ts": 1777377300,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 3.45,
+      "outcome": "win",
+      "intensity": 0.173,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.45 sur XAUUSD en OFF",
+      "relevance": 0.16684429906152465
+    },
+    {
+      "id": "ee122701",
+      "ts": 1777244288,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 3.63,
+      "outcome": "win",
+      "intensity": 0.181,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.63 sur XAUUSD en OFF",
+      "relevance": 0.16582783561505837
+    },
+    {
+      "id": "6cd74897",
+      "ts": 1777377645,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 3.39,
+      "outcome": "win",
+      "intensity": 0.17,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.39 sur XAUUSD en OFF",
+      "relevance": 0.16397286896066982
+    },
+    {
+      "id": "8f09dbfc",
+      "ts": 1777376996,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 3.36,
+      "outcome": "win",
+      "intensity": 0.168,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.36 sur XAUUSD en OFF",
+      "relevance": 0.16200320800276213
+    },
+    {
+      "id": "11fa09cb",
+      "ts": 1777376484,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 3.14,
+      "outcome": "win",
+      "intensity": 0.157,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.14 sur XAUUSD en OFF",
+      "relevance": 0.1513659526971467
+    },
+    {
+      "id": "59aeccca",
+      "ts": 1777278655,
+      "symbol": "GBPUSD",
+      "type": "sell",
+      "pnl": 3.06,
+      "outcome": "win",
+      "intensity": 0.153,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "GBPUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $3.06 sur GBPUSD en OFF",
+      "relevance": 0.14204584802358616
+    },
+    {
+      "id": "861bbe67",
+      "ts": 1777282183,
+      "symbol": "EURUSD",
+      "type": "sell",
+      "pnl": 2.88,
+      "outcome": "win",
+      "intensity": 0.144,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "EURUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.88 sur EURUSD en OFF",
+      "relevance": 0.13387230102971417
+    },
+    {
+      "id": "24ad1e99",
+      "ts": 1777462256,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -2.64,
+      "outcome": "loss",
+      "intensity": 0.132,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $2.64 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.13154481594525977
+    },
+    {
+      "id": "1db4b9da",
+      "ts": 1777385662,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -2.63,
+      "outcome": "loss",
+      "intensity": 0.132,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $2.63 sur Volatility 100 Index en OFF",
+      "relevance": 0.1277145179993171
+    },
+    {
+      "id": "c93f8c4d",
+      "ts": 1777061184,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": -2.95,
+      "outcome": "loss",
+      "intensity": 0.148,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $2.95 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.12634589984053288
+    },
+    {
+      "id": "e1931669",
+      "ts": 1777282117,
+      "symbol": "EURUSD",
+      "type": "sell",
+      "pnl": 2.7,
+      "outcome": "win",
+      "intensity": 0.135,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "EURUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.70 sur EURUSD en OFF",
+      "relevance": 0.12550208651969047
+    },
+    {
+      "id": "8f46f998",
+      "ts": 1777377747,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 2.6,
+      "outcome": "win",
+      "intensity": 0.13,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.60 sur XAUUSD en OFF",
+      "relevance": 0.12539595190634362
+    },
+    {
+      "id": "ef760e5b",
+      "ts": 1777375520,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.47,
+      "outcome": "win",
+      "intensity": 0.124,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.47 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.11950572513217689
+    },
+    {
+      "id": "b0c1f569",
+      "ts": 1777462257,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.32,
+      "outcome": "win",
+      "intensity": 0.116,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.32 sur XAUUSD en OFF",
+      "relevance": 0.11560003436884685
+    },
+    {
+      "id": "29ddaa00",
+      "ts": 1777462257,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.31,
+      "outcome": "win",
+      "intensity": 0.116,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.31 sur XAUUSD en OFF",
+      "relevance": 0.11560003436884685
+    },
+    {
+      "id": "61124d01",
+      "ts": 1777462257,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.3,
+      "outcome": "win",
+      "intensity": 0.115,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.30 sur XAUUSD en OFF",
+      "relevance": 0.11460348234842575
+    },
+    {
+      "id": "a03b9c34",
+      "ts": 1777302673,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.43,
+      "outcome": "win",
+      "intensity": 0.122,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "15h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.43 sur XAUUSD en OFF",
+      "relevance": 0.11431973389962442
+    },
+    {
+      "id": "2b2d3eff",
+      "ts": 1777462258,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.24,
+      "outcome": "win",
+      "intensity": 0.112,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.24 sur XAUUSD en OFF",
+      "relevance": 0.11161386934806056
+    },
+    {
+      "id": "e03631f4",
+      "ts": 1777061184,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": -2.59,
+      "outcome": "loss",
+      "intensity": 0.13,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "18h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $2.59 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.1109795066166843
+    },
+    {
+      "id": "56385e76",
+      "ts": 1777064674,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": 2.52,
+      "outcome": "win",
+      "intensity": 0.126,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.52 sur Volatility 100 Index en OFF",
+      "relevance": 0.10770968074185183
+    },
+    {
+      "id": "16b80680",
+      "ts": 1777376615,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.2,
+      "outcome": "win",
+      "intensity": 0.11,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.20 sur XAUUSD en OFF",
+      "relevance": 0.10605793836869054
+    },
+    {
+      "id": "f73a1a46",
+      "ts": 1777462256,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.12,
+      "outcome": "win",
+      "intensity": 0.106,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.12 sur XAUUSD en OFF",
+      "relevance": 0.10563447341058738
+    },
+    {
+      "id": "d1c3aaf5",
+      "ts": 1777462424,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.04,
+      "outcome": "win",
+      "intensity": 0.102,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.04 sur XAUUSD en OFF",
+      "relevance": 0.10165485539389962
+    },
+    {
+      "id": "e5fba0ef",
+      "ts": 1777378544,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 2.09,
+      "outcome": "win",
+      "intensity": 0.104,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.09 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.10034761212394415
+    },
+    {
+      "id": "92b2ba2c",
+      "ts": 1777064686,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": 2.32,
+      "outcome": "win",
+      "intensity": 0.116,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.32 sur Volatility 100 Index en OFF",
+      "relevance": 0.09916175246251203
+    },
+    {
+      "id": "c846a349",
+      "ts": 1777377910,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.96,
+      "outcome": "win",
+      "intensity": 0.098,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.96 sur XAUUSD en OFF",
+      "relevance": 0.09453520078751587
+    },
+    {
+      "id": "293938f0",
+      "ts": 1777309111,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 2.01,
+      "outcome": "win",
+      "intensity": 0.1,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "15h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.01 sur USDJPY en OFF | forte tendance confirmée",
+      "relevance": 0.0939377325873641
+    },
+    {
+      "id": "eb064e3e",
+      "ts": 1777064448,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": 2.1,
+      "outcome": "win",
+      "intensity": 0.105,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $2.10 sur Volatility 100 Index en OFF",
+      "relevance": 0.08975024149827171
+    },
+    {
+      "id": "8c185801",
+      "ts": 1777376903,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.84,
+      "outcome": "win",
+      "intensity": 0.092,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.84 sur XAUUSD en OFF",
+      "relevance": 0.08871285943606026
+    },
+    {
+      "id": "9e0c7b2a",
+      "ts": 1777464380,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.73,
+      "outcome": "win",
+      "intensity": 0.086,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.73 sur XAUUSD en OFF",
+      "relevance": 0.08577369868228175
+    },
+    {
+      "id": "eefec344",
+      "ts": 1777464379,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.73,
+      "outcome": "win",
+      "intensity": 0.086,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.73 sur XAUUSD en OFF",
+      "relevance": 0.08577366559058339
+    },
+    {
+      "id": "355dfc14",
+      "ts": 1777464379,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.73,
+      "outcome": "win",
+      "intensity": 0.086,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.73 sur XAUUSD en OFF",
+      "relevance": 0.08577366559058339
+    },
+    {
+      "id": "219a1f1a",
+      "ts": 1777375772,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 1.75,
+      "outcome": "win",
+      "intensity": 0.087,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.75 sur USDJPY en OFF",
+      "relevance": 0.08385491092658418
+    },
+    {
+      "id": "7e535700",
+      "ts": 1777464380,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.66,
+      "outcome": "win",
+      "intensity": 0.083,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.66 sur XAUUSD en OFF",
+      "relevance": 0.08278159291429518
+    },
+    {
+      "id": "d03a8d15",
+      "ts": 1777380681,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.67,
+      "outcome": "win",
+      "intensity": 0.083,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.67 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.08015116771057366
+    },
+    {
+      "id": "6efcae10",
+      "ts": 1777377401,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.66,
+      "outcome": "win",
+      "intensity": 0.083,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.66 sur XAUUSD en OFF",
+      "relevance": 0.08004980599690824
+    },
+    {
+      "id": "acb7f2d7",
+      "ts": 1777278695,
+      "symbol": "EURUSD",
+      "type": "sell",
+      "pnl": 1.68,
+      "outcome": "win",
+      "intensity": 0.084,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "6h",
+        "symbol": "EURUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.68 sur EURUSD en OFF | forte tendance confirmée",
+      "relevance": 0.07798715927391324
+    },
+    {
+      "id": "58ba2d1b",
+      "ts": 1777468956,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -1.5,
+      "outcome": "loss",
+      "intensity": 0.075,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $1.50 sur Volatility 100 Index en OFF",
+      "relevance": 0.07493481982802555
+    },
+    {
+      "id": "3789e832",
+      "ts": 1777064533,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": 1.72,
+      "outcome": "win",
+      "intensity": 0.086,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.72 sur Volatility 100 Index en OFF",
+      "relevance": 0.07351213226736333
+    },
+    {
+      "id": "dd0e2a4f",
+      "ts": 1777376617,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.53,
+      "outcome": "win",
+      "intensity": 0.076,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.53 sur XAUUSD en OFF",
+      "relevance": 0.07327645032245349
+    },
+    {
+      "id": "cc27efab",
+      "ts": 1777278820,
+      "symbol": "EURUSD",
+      "type": "sell",
+      "pnl": 1.56,
+      "outcome": "win",
+      "intensity": 0.078,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "6h",
+        "symbol": "EURUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.56 sur EURUSD en OFF | forte tendance confirmée",
+      "relevance": 0.07242014029661115
+    },
+    {
+      "id": "61503a8b",
+      "ts": 1777375444,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 1.5,
+      "outcome": "win",
+      "intensity": 0.075,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.50 sur USDJPY en OFF",
+      "relevance": 0.0722795692485822
+    },
+    {
+      "id": "39204b45",
+      "ts": 1777464379,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.41,
+      "outcome": "win",
+      "intensity": 0.07,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.41 sur XAUUSD en OFF",
+      "relevance": 0.06981577431791673
+    },
+    {
+      "id": "3007e06b",
+      "ts": 1777246270,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.46,
+      "outcome": "win",
+      "intensity": 0.073,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.46 sur XAUUSD en OFF",
+      "relevance": 0.06693200047220936
+    },
+    {
+      "id": "7b531be1",
+      "ts": 1777462425,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.3,
+      "outcome": "win",
+      "intensity": 0.065,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.30 sur XAUUSD en OFF",
+      "relevance": 0.06478007990018717
+    },
+    {
+      "id": "be909a0a",
+      "ts": 1777331783,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 1.23,
+      "outcome": "win",
+      "intensity": 0.061,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "21h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.23 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.05780543111871021
+    },
+    {
+      "id": "6bcaf98e",
+      "ts": 1777380607,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.19,
+      "outcome": "win",
+      "intensity": 0.059,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.19 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.056973299869104294
+    },
+    {
+      "id": "2f376b4d",
+      "ts": 1777470943,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.13,
+      "outcome": "win",
+      "intensity": 0.056,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "NEW_YORK",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.13 sur XAUUSD en NEW_YORK | forte tendance confirmée | bonne session",
+      "relevance": 0.05599424028669955
+    },
+    {
+      "id": "e229749b",
+      "ts": 1777469727,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.13,
+      "outcome": "win",
+      "intensity": 0.056,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.13 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.05596797754472694
+    },
+    {
+      "id": "f0c9e986",
+      "ts": 1777278759,
+      "symbol": "EURUSD",
+      "type": "sell",
+      "pnl": 1.2,
+      "outcome": "win",
+      "intensity": 0.06,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "6h",
+        "symbol": "EURUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.20 sur EURUSD en OFF | forte tendance confirmée",
+      "relevance": 0.05570648921896953
+    },
+    {
+      "id": "69a69bd3",
+      "ts": 1777377790,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -1.01,
+      "outcome": "loss",
+      "intensity": 0.051,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $1.01 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.049194612624664416
+    },
+    {
+      "id": "1294a832",
+      "ts": 1777280120,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 1.04,
+      "outcome": "win",
+      "intensity": 0.052,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $1.04 sur XAUUSD en OFF",
+      "relevance": 0.048304314157494456
+    },
+    {
+      "id": "6ede4c92",
+      "ts": 1777469131,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -0.94,
+      "outcome": "loss",
+      "intensity": 0.047,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.94 sur Volatility 100 Index en OFF",
+      "relevance": 0.04696232433348319
+    },
+    {
+      "id": "0fa84b69",
+      "ts": 1777377648,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.96,
+      "outcome": "win",
+      "intensity": 0.048,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.96 sur XAUUSD en OFF",
+      "relevance": 0.046298275410125024
+    },
+    {
+      "id": "39551db7",
+      "ts": 1777309179,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 0.94,
+      "outcome": "win",
+      "intensity": 0.047,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "15h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.94 sur USDJPY en OFF | forte tendance confirmée",
+      "relevance": 0.044151892606691986
+    },
+    {
+      "id": "cd39b11d",
+      "ts": 1777248370,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.94,
+      "outcome": "win",
+      "intensity": 0.047,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "0h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.94 sur XAUUSD en OFF",
+      "relevance": 0.04312813340739636
+    },
+    {
+      "id": "058ec263",
+      "ts": 1777463321,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.78,
+      "outcome": "win",
+      "intensity": 0.039,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.78 sur XAUUSD en OFF",
+      "relevance": 0.038881486131052516
+    },
+    {
+      "id": "152e47e5",
+      "ts": 1777461826,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.74,
+      "outcome": "win",
+      "intensity": 0.037,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.74 sur XAUUSD en OFF",
+      "relevance": 0.03686629408664763
+    },
+    {
+      "id": "eb766ac0",
+      "ts": 1777331788,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.77,
+      "outcome": "win",
+      "intensity": 0.038,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "21h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.77 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.036010010160588614
+    },
+    {
+      "id": "15b307e2",
+      "ts": 1777309246,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 0.76,
+      "outcome": "win",
+      "intensity": 0.038,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "15h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.76 sur USDJPY en OFF | forte tendance confirmée",
+      "relevance": 0.035698197615906244
+    },
+    {
+      "id": "5ed0a880",
+      "ts": 1777463322,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.71,
+      "outcome": "win",
+      "intensity": 0.035,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.71 sur XAUUSD en OFF",
+      "relevance": 0.034893654861718124
+    },
+    {
+      "id": "30d61a67",
+      "ts": 1777244711,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.77,
+      "outcome": "win",
+      "intensity": 0.038,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.77 sur XAUUSD en OFF",
+      "relevance": 0.034820365746881715
+    },
+    {
+      "id": "f94a700d",
+      "ts": 1777377277,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -0.73,
+      "outcome": "loss",
+      "intensity": 0.036,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.73 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.034718736814837746
+    },
+    {
+      "id": "f88838c0",
+      "ts": 1777463322,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.69,
+      "outcome": "win",
+      "intensity": 0.034,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.69 sur XAUUSD en OFF",
+      "relevance": 0.03389669329424046
+    },
+    {
+      "id": "549c6d6d",
+      "ts": 1777463321,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.67,
+      "outcome": "win",
+      "intensity": 0.034,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.67 sur XAUUSD en OFF",
+      "relevance": 0.033896680216815016
+    },
+    {
+      "id": "285f8367",
+      "ts": 1777463321,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.67,
+      "outcome": "win",
+      "intensity": 0.034,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.67 sur XAUUSD en OFF",
+      "relevance": 0.033896680216815016
+    },
+    {
+      "id": "82e2bb13",
+      "ts": 1777469043,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -0.64,
+      "outcome": "loss",
+      "intensity": 0.032,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.64 sur Volatility 100 Index en OFF",
+      "relevance": 0.03197326295193063
+    },
+    {
+      "id": "f410cf79",
+      "ts": 1777461824,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.63,
+      "outcome": "win",
+      "intensity": 0.032,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.63 sur XAUUSD en OFF",
+      "relevance": 0.03188433785119484
+    },
+    {
+      "id": "d7a35370",
+      "ts": 1777377151,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.63,
+      "outcome": "win",
+      "intensity": 0.032,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.63 sur XAUUSD en OFF",
+      "relevance": 0.0308595992350978
+    },
+    {
+      "id": "e47f4a05",
+      "ts": 1777470747,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.6,
+      "outcome": "win",
+      "intensity": 0.03,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "NEW_YORK",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.60 sur XAUUSD en NEW_YORK | forte tendance confirmée | bonne session",
+      "relevance": 0.029994646239865152
+    },
+    {
+      "id": "fd8c9ad5",
+      "ts": 1777377881,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -0.62,
+      "outcome": "loss",
+      "intensity": 0.031,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.62 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.02990365751373297
+    },
+    {
+      "id": "15ebaf9f",
+      "ts": 1777281808,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.64,
+      "outcome": "win",
+      "intensity": 0.032,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "LONDON",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.64 sur XAUUSD en LONDON | forte tendance confirmée | bonne session",
+      "relevance": 0.0297450965181307
+    },
+    {
+      "id": "d6ca4671",
+      "ts": 1777461824,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.54,
+      "outcome": "win",
+      "intensity": 0.027,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.54 sur XAUUSD en OFF",
+      "relevance": 0.026902410061945648
+    },
+    {
+      "id": "393f2485",
+      "ts": 1777244385,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -0.59,
+      "outcome": "loss",
+      "intensity": 0.029,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.59 sur XAUUSD en OFF | heure habituellement non rentable",
+      "relevance": 0.0265700950437018
+    },
+    {
+      "id": "91b7305d",
+      "ts": 1777463573,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.49,
+      "outcome": "win",
+      "intensity": 0.025,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.49 sur XAUUSD en OFF",
+      "relevance": 0.024926452858525933
+    },
+    {
+      "id": "c0648490",
+      "ts": 1777461824,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.5,
+      "outcome": "win",
+      "intensity": 0.025,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.50 sur XAUUSD en OFF",
+      "relevance": 0.024909638946245972
+    },
+    {
+      "id": "9a333ac1",
+      "ts": 1777376409,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.5,
+      "outcome": "win",
+      "intensity": 0.025,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.50 sur XAUUSD en OFF",
+      "relevance": 0.02410216129914638
+    },
+    {
+      "id": "0297394e",
+      "ts": 1777463573,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.47,
+      "outcome": "win",
+      "intensity": 0.024,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.47 sur XAUUSD en OFF",
+      "relevance": 0.023929394744184897
+    },
+    {
+      "id": "65d24176",
+      "ts": 1777463573,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.47,
+      "outcome": "win",
+      "intensity": 0.024,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.47 sur XAUUSD en OFF",
+      "relevance": 0.023929394744184897
+    },
+    {
+      "id": "1064ab23",
+      "ts": 1777461824,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.46,
+      "outcome": "win",
+      "intensity": 0.023,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.46 sur XAUUSD en OFF",
+      "relevance": 0.022916867830546292
+    },
+    {
+      "id": "4b1b5a3a",
+      "ts": 1777463574,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.44,
+      "outcome": "win",
+      "intensity": 0.022,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.44 sur XAUUSD en OFF",
+      "relevance": 0.021935286978189063
+    },
+    {
+      "id": "93a2c614",
+      "ts": 1777463325,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.44,
+      "outcome": "win",
+      "intensity": 0.022,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.44 sur XAUUSD en OFF",
+      "relevance": 0.02193317987011869
+    },
+    {
+      "id": "dcfb7f85",
+      "ts": 1777279458,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.46,
+      "outcome": "win",
+      "intensity": 0.023,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.46 sur XAUUSD en OFF",
+      "relevance": 0.02135991367847276
+    },
+    {
+      "id": "a1f517ef",
+      "ts": 1777246209,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.4,
+      "outcome": "win",
+      "intensity": 0.02,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.40 sur XAUUSD en OFF",
+      "relevance": 0.018337102826397382
+    },
+    {
+      "id": "8cc8c354",
+      "ts": 1777463574,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.33,
+      "outcome": "win",
+      "intensity": 0.017,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.33 sur XAUUSD en OFF",
+      "relevance": 0.0169499944831461
+    },
+    {
+      "id": "873bdce6",
+      "ts": 1777463574,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.33,
+      "outcome": "win",
+      "intensity": 0.017,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.33 sur XAUUSD en OFF",
+      "relevance": 0.0169499944831461
+    },
+    {
+      "id": "a5bb7a47",
+      "ts": 1777377813,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.33,
+      "outcome": "win",
+      "intensity": 0.017,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.33 sur XAUUSD en OFF",
+      "relevance": 0.016398349717623537
+    },
+    {
+      "id": "b3896d35",
+      "ts": 1777375444,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -0.33,
+      "outcome": "loss",
+      "intensity": 0.017,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.33 sur XAUUSD en OFF",
+      "relevance": 0.016383369029678636
+    },
+    {
+      "id": "11a65d9c",
+      "ts": 1777302606,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.33,
+      "outcome": "win",
+      "intensity": 0.017,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "15h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.33 sur XAUUSD en OFF",
+      "relevance": 0.01592938722569764
+    },
+    {
+      "id": "2f8977ba",
+      "ts": 1777463574,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.31,
+      "outcome": "win",
+      "intensity": 0.015,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.31 sur XAUUSD en OFF",
+      "relevance": 0.014955877485128909
+    },
+    {
+      "id": "483461b4",
+      "ts": 1777279398,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.31,
+      "outcome": "win",
+      "intensity": 0.015,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.31 sur XAUUSD en OFF",
+      "relevance": 0.013930056027227716
+    },
+    {
+      "id": "5f9e15d1",
+      "ts": 1777377070,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.27,
+      "outcome": "win",
+      "intensity": 0.014,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.27 sur XAUUSD en OFF",
+      "relevance": 0.013500652763364249
+    },
+    {
+      "id": "35741a97",
+      "ts": 1777376828,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -0.29,
+      "outcome": "loss",
+      "intensity": 0.014,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.29 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.013499392344592763
+    },
+    {
+      "id": "9363b9f7",
+      "ts": 1777376951,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -0.26,
+      "outcome": "loss",
+      "intensity": 0.013,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.26 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.012535744887674203
+    },
+    {
+      "id": "e4a988cc",
+      "ts": 1777278944,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.25,
+      "outcome": "win",
+      "intensity": 0.013,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.25 sur XAUUSD en OFF",
+      "relevance": 0.012070600820538709
+    },
+    {
+      "id": "a410e7a1",
+      "ts": 1777463323,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.24,
+      "outcome": "win",
+      "intensity": 0.012,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.24 sur XAUUSD en OFF",
+      "relevance": 0.01196354342529563
+    },
+    {
+      "id": "9a30fdfb",
+      "ts": 1777375585,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -0.24,
+      "outcome": "loss",
+      "intensity": 0.012,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.24 sur XAUUSD en OFF",
+      "relevance": 0.011565360196838972
+    },
+    {
+      "id": "1bc39d19",
+      "ts": 1777374310,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.24,
+      "outcome": "win",
+      "intensity": 0.012,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "strong",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.24 sur XAUUSD en OFF | forte tendance confirmée",
+      "relevance": 0.011559672616545268
+    },
+    {
+      "id": "0fab1b8a",
+      "ts": 1777246039,
+      "symbol": "GBPUSD",
+      "type": "sell",
+      "pnl": 0.24,
+      "outcome": "win",
+      "intensity": 0.012,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "21h",
+        "symbol": "GBPUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.24 sur GBPUSD en OFF",
+      "relevance": 0.01100154012054764
+    },
+    {
+      "id": "bbe36f5a",
+      "ts": 1777376827,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": -0.23,
+      "outcome": "loss",
+      "intensity": 0.011,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.23 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.010606661321531683
+    },
+    {
+      "id": "01f332dd",
+      "ts": 1777376439,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -0.2,
+      "outcome": "loss",
+      "intensity": 0.01,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": false
+      },
+      "lesson": "perdu $0.20 sur USDJPY en OFF | ADX faible = tendance molle | spread élevé",
+      "relevance": 0.009640976104384384
+    },
+    {
+      "id": "e4073ea3",
+      "ts": 1777312234,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -0.2,
+      "outcome": "loss",
+      "intensity": 0.01,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "15h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.20 sur Volatility 100 Index en OFF",
+      "relevance": 0.009405098271986446
+    },
+    {
+      "id": "e86b24df",
+      "ts": 1777461796,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.17,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.17 sur XAUUSD en OFF",
+      "relevance": 0.008967373150353645
+    },
+    {
+      "id": "3128bf1d",
+      "ts": 1777461795,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.17,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.17 sur XAUUSD en OFF",
+      "relevance": 0.00896736969071961
+    },
+    {
+      "id": "071fbc63",
+      "ts": 1777461794,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.19,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.19 sur XAUUSD en OFF",
+      "relevance": 0.008967366231086907
+    },
+    {
+      "id": "addd1d18",
+      "ts": 1777461794,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.19,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.19 sur XAUUSD en OFF",
+      "relevance": 0.008967366231086907
+    },
+    {
+      "id": "6280a464",
+      "ts": 1777378025,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.17,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "12h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.17 sur XAUUSD en OFF",
+      "relevance": 0.00868218935057064
+    },
+    {
+      "id": "e52b2750",
+      "ts": 1777377514,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": -0.17,
+      "outcome": "loss",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.17 sur XAUUSD en OFF | ADX faible = tendance molle",
+      "relevance": 0.008680477868525844
+    },
+    {
+      "id": "d0b364cb",
+      "ts": 1777377068,
+      "symbol": "XAUUSD",
+      "type": "sell",
+      "pnl": 0.19,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.19 sur XAUUSD en OFF",
+      "relevance": 0.008678984365412952
+    },
+    {
+      "id": "7eac5d12",
+      "ts": 1777280180,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.17,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.17 sur XAUUSD en OFF",
+      "relevance": 0.008360555594859775
+    },
+    {
+      "id": "54e2cabd",
+      "ts": 1777279286,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.19,
+      "outcome": "win",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "6h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.19 sur XAUUSD en OFF",
+      "relevance": 0.008357672474538426
+    },
+    {
+      "id": "dd136aff",
+      "ts": 1777248007,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -0.17,
+      "outcome": "loss",
+      "intensity": 0.009,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "0h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.17 sur Volatility 100 Index en OFF | heure habituellement non rentable",
+      "relevance": 0.008257422235205494
+    },
+    {
+      "id": "4493157f",
+      "ts": 1777461795,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.16,
+      "outcome": "win",
+      "intensity": 0.008,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.16 sur XAUUSD en OFF",
+      "relevance": 0.007970995280639654
+    },
+    {
+      "id": "ba8b3759",
+      "ts": 1777461795,
+      "symbol": "XAUUSD",
+      "type": "buy",
+      "pnl": 0.16,
+      "outcome": "win",
+      "intensity": 0.008,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "XAUUSD",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.16 sur XAUUSD en OFF",
+      "relevance": 0.007970995280639654
+    },
+    {
+      "id": "d0325393",
+      "ts": 1777373406,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 0.16,
+      "outcome": "win",
+      "intensity": 0.008,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.16 sur USDJPY en OFF",
+      "relevance": 0.007703761136861568
+    },
+    {
+      "id": "3dae894a",
+      "ts": 1777373256,
+      "symbol": "Volatility 100 Index",
+      "type": "sell",
+      "pnl": -0.16,
+      "outcome": "loss",
+      "intensity": 0.008,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.16 sur Volatility 100 Index en OFF",
+      "relevance": 0.007703315330250954
+    },
+    {
+      "id": "5e29ffe4",
+      "ts": 1777378685,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -0.14,
+      "outcome": "loss",
+      "intensity": 0.007,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "12h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.14 sur Volatility 100 Index en OFF",
+      "relevance": 0.006754533624777194
+    },
+    {
+      "id": "a17c3102",
+      "ts": 1777376531,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": -0.13,
+      "outcome": "loss",
+      "intensity": 0.007,
+      "fingerprint": {
+        "rsi_bucket": "low",
+        "adx_bucket": "weak",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": false
+      },
+      "lesson": "perdu $0.13 sur USDJPY en OFF | ADX faible = tendance molle | spread élevé",
+      "relevance": 0.00674892281391781
+    },
+    {
+      "id": "1aba2422",
+      "ts": 1777375505,
+      "symbol": "USDJPY",
+      "type": "sell",
+      "pnl": 0.13,
+      "outcome": "win",
+      "intensity": 0.007,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "9h",
+        "symbol": "USDJPY",
+        "session": "OFF",
+        "direction": "sell",
+        "spread_ok": true
+      },
+      "lesson": "gagné $0.13 sur USDJPY en OFF",
+      "relevance": 0.006746251893958417
+    },
+    {
+      "id": "e43b2be0",
+      "ts": 1777312303,
+      "symbol": "Volatility 100 Index",
+      "type": "buy",
+      "pnl": -0.15,
+      "outcome": "loss",
+      "intensity": 0.007,
+      "fingerprint": {
+        "rsi_bucket": "mid",
+        "adx_bucket": "mod",
+        "hour_bucket": "15h",
+        "symbol": "Volatility 100 Index",
+        "session": "OFF",
+        "direction": "buy",
+        "spread_ok": true
+      },
+      "lesson": "perdu $0.15 sur Volatility 100 Index en OFF",
+      "relevance": 0.006583744049762795
+    }
+  ],
+  "stats": {
+    "total_trades": 2767,
+    "win_rate": 54.5,
+    "total_pnl": -39989.65,
+    "profit_factor": 0.33,
+    "avg_win": 13.11,
+    "avg_loss": -47.51,
+    "best_trade": 1535.0,
+    "worst_trade": -6361.4
+  },
+  "insights": [
+    {
+      "type": "timing",
+      "icon": "clock",
+      "title": "Meilleure heure : 20h UTC",
+      "detail": "WR 28% sur 18 trades — Pire : 21h (0%)",
+      "action": "Favoriser les trades à 20h, éviter 21h"
+    },
+    {
+      "type": "symbol",
+      "icon": "star",
+      "title": "Champion : XAUUSD",
+      "detail": "PnL $1982.09 | WR 68% sur 28 trades",
+      "action": "Augmenter légèrement la confiance sur XAUUSD"
+    },
+    {
+      "type": "warning",
+      "icon": "alert",
+      "title": "Schéma de perte détecté à 18h",
+      "detail": "6 pertes sur les 20 derniers trades à cette heure",
+      "action": "Envisager de bloquer 18h dans IsGlobalTradingAllowed()"
+    },
+    {
+      "type": "trend",
+      "icon": "trend",
+      "title": "↓ Tendance dégradation de performance",
+      "detail": "WR : 70% → 40% sur les 20 derniers trades",
+      "action": "Réduire les lots ou faire une pause"
+    }
+  ],
+  "logs": [
+    "N1: 16 contextes pondérés",
+    "N3: 200 épisodes"
+  ]
+}

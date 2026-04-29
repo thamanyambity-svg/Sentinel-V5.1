@@ -268,6 +268,10 @@ class DashboardManager:
             "training": JSONFileLoader(base_dir / self.config["files"]["training"]),
             "action_plan": JSONFileLoader(base_dir / self.config["files"]["action_plan"]),
             "fundamental": JSONFileLoader(base_dir / self.config["files"]["fundamental"]),
+            # CSV Performance (max 10 lines)
+            "performance": CSVFileLoader(mt5_dir / "aladdin_performance.csv"),
+            "bb_live": CSVFileLoader(mt5_dir / "aladdin_bb_evolution.csv"),
+            "bb_entry": CSVFileLoader(mt5_dir / "aladdin_bb_entry.csv"),
         }
 
     def load_data(self, key: str, cache_ttl: Optional[float] = None) -> Optional[Dict[str, Any]]:

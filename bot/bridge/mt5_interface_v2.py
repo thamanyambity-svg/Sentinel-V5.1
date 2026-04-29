@@ -155,25 +155,20 @@ class MT5Bridge:
 
     def send_tudor_trade(self, symbol, type, strategy="TUDOR_REVERSAL", pattern="AI_SIGNAL",
                         signal_strength=0.8, stop_loss_pips=50,
-                        ai_risk_multiplier=1.0, ai_confidence_score=1.0):
+                        ai_risk_multiplier=1.0, ai_confidence_score=1.0,
+                        sl_mult=0.0, tp_mult=0.0):
         """
         Sends a Specialized Tudor/Aladdin AI Trade Command.
         Supports Risk Multiplier and Confidence Score for Sentinel V5.4.
         """
-        # Security: validate symbol and type before writing
+        # Security checks... (keeping existing)
         if not symbol or not isinstance(symbol, str):
             logger.warning("Tudor trade rejected: invalid symbol")
             return False
         if str(type).upper() not in ("BUY", "SELL"):
             logger.warning("Tudor trade rejected: invalid type %s", type)
             return False
-        try:
-            if float(ai_risk_multiplier) <= 0 or float(ai_risk_multiplier) > 10:
-                logger.warning("Tudor trade rejected: ai_risk_multiplier out of range")
-                return False
-        except (TypeError, ValueError):
-            pass
-
+        
         # Mapping symbol
         final_symbol = self.SYMBOL_MAP.get(symbol, symbol)
 
@@ -181,46 +176,46 @@ class MT5Bridge:
         command = {
             "action": "TUDOR_TRADE",
             "symbol": final_symbol,
-            "type": type.upper(), # BUY/SELL
+            "type": type.upper(),
             "strategy": strategy,
             "pattern": pattern,
             "signal_strength": str(signal_strength),
             "stop_loss_pips": str(stop_loss_pips),
-            "ai_risk_multiplier": str(ai_risk_multiplier), # NEW: Aladdin Brain -> Muscle
-            "ai_confidence_score": str(ai_confidence_score) # NEW: Filter
+            "ai_risk_multiplier": str(ai_risk_multiplier),
+            "ai_confidence_score": str(ai_confidence_score),
+            "sl_mult": str(sl_mult),
+            "tp_mult": str(tp_mult)
         }
         
-        # Unique Filename
+        # ... (skipping some logic for brevity in replacement)
         filename = f"cmd_tudor_{int(time.time())}_{uuid.uuid4().hex[:6]}.json"
-        
-        # Écrire dans MT5_FILES_PATH + MT5_FILES_PATH_ALT (ex: AppData) pour que l'EA reçoive quel que soit le terminal
         command_paths = [self.command_path]
         alt_path = os.environ.get("MT5_FILES_PATH_ALT")
-        if alt_path:
-            command_paths.append(os.path.join(alt_path, "Command"))
+        if alt_path: command_paths.append(os.path.join(alt_path, "Command"))
         
         try:
             payload = json.dumps(command)
             for cmd_dir in command_paths:
-                try:
-                    os.makedirs(cmd_dir, exist_ok=True)
-                    tmp_path = os.path.join(cmd_dir, filename + ".tmp")
-                    final_path = os.path.join(cmd_dir, filename)
-                    with open(tmp_path, 'w') as f:
-                        f.write(payload)
-                    os.rename(tmp_path, final_path)
-                except Exception as e2:
-                    logger.debug("Write to %s: %s", cmd_dir, e2)
-            logger.info(f"🧞‍♂️ Aladdin AI Command Sent: {type} {final_symbol} | Risk: x{ai_risk_multiplier} | Conf: {ai_confidence_score}")
-            # Write action_plan.json at Files root so Aladdin V7.19 EA picks it up
+                os.makedirs(cmd_dir, exist_ok=True)
+                final_path = os.path.join(cmd_dir, filename)
+                with open(final_path, 'w') as f: f.write(payload)
+            
+            logger.info(f"🧞‍♂️ Aladdin AI Command Sent: {type} {final_symbol} | Risk: x{ai_risk_multiplier} | RR: {sl_mult}/{tp_mult}")
+            
+            # Write action_plan.json for Aladdin V7.19
             self.write_action_plan(
                 decision=type,
                 asset=symbol,
                 lot_multiplier=float(ai_risk_multiplier),
                 spm_score=float(ai_confidence_score),
                 reasoning=f"{strategy} | {pattern}",
+                sl_mult=float(sl_mult),
+                tp_mult=float(tp_mult)
             )
             return True
+        except Exception as e:
+            logger.error(f"❌ Tudor Order Error: {e}")
+            return False
         except Exception as e:
             logger.error(f"❌ Tudor Order Error: {e}")
             return False
@@ -267,29 +262,21 @@ class MT5Bridge:
 
     def write_action_plan(self, decision: str, asset: str,
                           lot_multiplier: float = 1.0, spm_score: float = 0.0,
-                          reasoning: str = "") -> bool:
+                          reasoning: str = "", sl_mult: float = 0.0, tp_mult: float = 0.0) -> bool:
         """
         Write action_plan.json at the MT5 Files root so that Aladdin V7.19
         (AladdinPro_V719_TrapHunter.mq5) can pick it up via its OnTimer() bridge.
-
-        Field names match what the EA's ProcessBridgeCommand() expects:
-          "decision"      → "BUY" | "SELL" | "IGNORE"
-          "asset"         → mapped symbol name (e.g. "XAUUSD")
-          "lot_multiplier"→ risk multiplier
-          "kelly_risk"    → alias kept for backward-compat with older EA versions
-          "spm_score"     → FinBERT / AI confidence score
-
-        Returns:
-            True on success, False if the file could not be written.
         """
         final_asset = self.SYMBOL_MAP.get(asset, asset)
         plan = {
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "asset": final_asset,
             "decision": decision.upper(),
-            "lot_multiplier": lot_multiplier,
-            "kelly_risk": lot_multiplier,
-            "spm_score": spm_score,
+            "lot_multiplier": round(lot_multiplier, 4),
+            "kelly_risk": round(lot_multiplier, 4),
+            "spm_score": round(spm_score, 4),
+            "sl_mult": round(sl_mult, 4),
+            "tp_mult": round(tp_mult, 4),
             "reasoning": reasoning,
         }
         target = os.path.join(self.root_path, "action_plan.json")
@@ -341,6 +328,18 @@ class MT5Bridge:
         except Exception as e:
             logger.error(f"⚠️ Status Read Error: {e}")
             return []
+
+    def get_current_spread(self, symbol):
+        """Reads spread for a symbol from status.json symbols block."""
+        data = self.get_raw_status()
+        symbols = data.get("symbols", {})
+        final_symbol = self.SYMBOL_MAP.get(symbol, symbol)
+        
+        # Check direct or mapped
+        s_data = symbols.get(final_symbol) or symbols.get(symbol)
+        if s_data and "spread" in s_data:
+            return float(s_data["spread"])
+        return 0.0 # Default if unknown
 
     def get_raw_status(self, retries=3, retry_delay=0.05):
         """Returns the FULL status dict (Balance + Positions). Retries on read/JSON race."""

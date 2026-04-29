@@ -1,4 +1,4 @@
-import { Text as RNText, TextProps } from 'react-native';
+import { Text as RNText, TextProps, Dimensions, Platform } from 'react-native';
 import { useColors } from '../../hooks/use-colors';
 
 interface TerminalTextProps extends TextProps {
@@ -7,6 +7,17 @@ interface TerminalTextProps extends TextProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
+
+// On force le mode Desktop si on est sur le Web pour éviter l'effet "miniature" dans les iframes
+const isDesktop = Platform.OS === 'web';
+
+const sizeMap = {
+  xs: isDesktop ? 14 : 10,
+  sm: isDesktop ? 16 : 12,
+  md: isDesktop ? 18 : 14,
+  lg: isDesktop ? 24 : 16,
+  xl: isDesktop ? 32 : 18,
+};
 
 export function TerminalText({ 
   children, 
@@ -32,14 +43,6 @@ export function TerminalText({
   const fontConfig = {
     family: (variant === 'ticker' || variant === 'matrix') ? 'JetBrainsMono_600SemiBold' : 'Inter_400Regular',
     weight: '400',
-  };
-
-  const sizeMap = {
-    xs: 10,
-    sm: 12,
-    md: 14,
-    lg: 16,
-    xl: 18,
   };
 
   return (

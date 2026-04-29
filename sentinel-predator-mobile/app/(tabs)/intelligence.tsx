@@ -25,24 +25,29 @@ const INTEL_SECTIONS = [
 ];
 
 export default function IntelligenceScreen() {
-  const colors = useColors();
-
-  const sectionColor = (color: string) => {
-    if (color === 'cyan') return colors.primary;
-    if (color === 'success') return colors.success;
-    return colors.warning;
-  };
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <HeaderTrading
-        balance={125430.82}
-        equity={127890.15}
-        marginLevel={12.4}
-        marketOpen={true}
-      />
-
-      <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+   const colors = useColors();
+   const { data: tradingData } = trpc.getTradingData.useQuery(undefined, {
+     refetchInterval: 1000,
+   });
+   const account = tradingData?.account;
+   const verdict = tradingData?.verdict;
+ 
+   const sectionColor = (color: string) => {
+     if (color === 'cyan') return colors.primary;
+     if (color === 'success') return colors.success;
+     return colors.warning;
+   };
+ 
+   return (
+     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+       <HeaderTrading
+         balance={account?.balance || 0}
+         equity={account?.equity || 0}
+         marginLevel={account?.marginLevel || 0}
+         marketOpen={account?.marketOpen ?? true}
+       />
+ 
+       <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
         <View>
           <TerminalText variant="matrix" size="xs">ANALYST BRIEFING</TerminalText>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -61,10 +66,10 @@ export default function IntelligenceScreen() {
             <TerminalText variant="matrix" size="xs">PRIMARY DIRECTIVE</TerminalText>
           </View>
           <TerminalText variant="primary" size="lg" className="font-bold" style={{ marginBottom: 8, lineHeight: 24 }}>
-            Maintain Long-Bias Exposure on Gold (XAUUSD) targeting 2065.00
+            {verdict?.bias === 'BUY' ? 'Execute Long-Bias Exposure' : verdict?.bias === 'SELL' ? 'Execute Short-Bias Exposure' : 'Maintain Neutral Observation'} on Active Assets
           </TerminalText>
           <TerminalText variant="muted" size="sm" style={{ lineHeight: 20 }}>
-            Structural liquidity research suggests a hunt for H4 liquidity at recent highs. Momentum oscillators reveal latent bullish divergence.
+            {verdict?.reasoning || "Structural liquidity research suggests a hunt for H4 liquidity at recent highs. Momentum oscillators reveal latent bullish divergence."}
           </TerminalText>
         </GlassCard>
 

@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Aonoseke Bot Trading V7.22</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#080b10;--surface:#0f1318;--surface2:#161b24;--border:#1a2130;
+  --accent:#00e5b0;--accent2:#3d7fff;--danger:#ff4d6d;--warn:#ffab40;
+  --gold:#ffd166;--text:#c9d1e0;--muted:#4a5568;
+  --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;
+  border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100;gap:12px;flex-wrap:wrap}
+.header-brand{display:flex;align-items:center;gap:18px}
+.logo-img{height:55px;width:auto;filter:drop-shadow(0 0 10px rgba(0,229,176,.2));transition:transform .3s}
+.logo-img:hover{transform:scale(1.05)}
+.brand-text{display:flex;flex-direction:column}
+.logo-main{font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:.08em;color:var(--accent);text-shadow:0 0 15px rgba(0,229,176,.3)}
+.vtag{color:var(--muted);font-weight:400;font-size:14px;margin-left:8px}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-top:4px}
+.hstatus{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;animation:pulse 2s infinite}
+.dot.live{background:var(--accent)}.dot.paused{background:var(--warn)}.dot.off{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+#htime{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+main{padding:16px 20px;display:flex;flex-direction:column;gap:16px;max-width:1600px;margin:0 auto}
+
+/* ══ EOD COUNTDOWN — ZONE GÉANTE ══ */
+#eod-zone{
+  background:linear-gradient(135deg,#0d1520 0%,#0a1a0f 100%);
+  border:1px solid var(--gold);border-radius:12px;
+  padding:20px 28px;position:relative;overflow:hidden;
+}
+#eod-zone::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(255,209,102,.06) 0%,transparent 70%);
+}
+.eod-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.eod-left{flex:1;min-width:260px}
+.eod-title{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:8px;opacity:.8}
+#eod-countdown{
+  font-family:var(--mono);font-size:clamp(42px,6vw,72px);font-weight:700;
+  color:var(--gold);letter-spacing:.04em;line-height:1;
+  text-shadow:0 0 30px rgba(255,209,102,.4);
+}
+#eod-countdown.urgent{color:var(--danger);text-shadow:0 0 30px rgba(255,77,109,.5);animation:flashclock 1s infinite}
+@keyframes flashclock{0%,100%{opacity:1}50%{opacity:.6}}
+#eod-label{font-size:13px;color:var(--muted);margin-top:6px;font-family:var(--mono)}
+#eod-status{margin-top:10px;font-size:13px}
+
+/* Gold analysis panel inside EOD */
+.eod-right{min-width:280px;max-width:380px;flex:1}
+#gold-analysis-box{
+  background:rgba(255,209,102,.04);border:1px solid rgba(255,209,102,.2);
+  border-radius:8px;padding:14px;
+}
+.ga-title{font-family:var(--mono);font-size:10px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+#ga-direction{font-family:var(--mono);font-size:28px;font-weight:700;margin-bottom:4px}
+#ga-direction.buy{color:var(--accent)}#ga-direction.sell{color:var(--danger)}#ga-direction.neutral{color:var(--warn)}
+#ga-conf{font-size:12px;color:var(--muted);margin-bottom:8px;font-family:var(--mono)}
+#ga-signals{display:flex;flex-direction:column;gap:4px}
+.ga-sig{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.ga-sig-name{color:var(--muted);font-family:var(--mono)}
+.ga-sig-val{color:var(--text);font-family:var(--mono);font-size:10px;text-align:right}
+#ga-reco{margin-top:8px;font-size:11px;color:var(--gold);font-style:italic}
+#ga-empty{color:var(--muted);font-size:12px;text-align:center;padding:20px 0}
+
+/* ══ SESSIONS DE MARCHÉ ══ */
+#sessions-bar{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;
+}
+.session-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:12px 14px;position:relative;overflow:hidden;transition:border-color .2s;
+}
+.session-card.active{border-color:var(--accent);background:rgba(0,229,176,.04)}
+.session-card.active::before{content:'OPEN';position:absolute;top:10px;right:10px;
+  font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:.08em;
+  background:rgba(0,229,176,.12);padding:2px 6px;border-radius:3px}
+.session-card.soon{border-color:var(--warn)}
+.sc-name{font-family:var(--mono);font-size:12px;font-weight:700;margin-bottom:4px}
+.session-card.active .sc-name{color:var(--accent)}
+.sc-hours{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:6px}
+.sc-assets{font-size:11px;color:var(--text)}
+.sc-countdown{font-family:var(--mono);font-size:10px;margin-top:6px}
+.sc-countdown.open{color:var(--accent)}.sc-countdown.closed{color:var(--muted)}
+.sc-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.sc-bar-fill{height:100%;border-radius:2px;transition:width 60s linear;background:var(--accent)}
+.session-card:not(.active) .sc-bar-fill{background:var(--muted)}
+
+/* ══ KPI ROW ══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;transition:border-color .2s}
+.kpi:hover{border-color:var(--accent)}
+.kpi-label{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.kpi-value{font-family:var(--mono);font-size:20px;font-weight:700;line-height:1}
+.kpi-value.pos{color:var(--accent)}.kpi-value.neg{color:var(--danger)}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:5px}
+
+/* ══ PANELS ══ */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--border)}
+.pt{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+.pb{padding:14px}
+.chart-wrap{position:relative;height:170px}
+
+/* ══ TABLE ══ */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:left;padding:6px 10px;
+   border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em}
+td{padding:7px 10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
+.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-family:var(--mono);font-size:9px;font-weight:700}
+.badge-buy{background:rgba(0,229,176,.12);color:var(--accent)}.badge-sell{background:rgba(255,77,109,.12);color:var(--danger)}
+.pos-num{color:var(--accent)}.neg-num{color:var(--danger)}
+
+.btn-close{background:rgba(255,77,109,.1);color:var(--danger);border:1px solid rgba(255,77,109,.3);
+  padding:3px 8px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:9px;transition:all .2s}
+.btn-close:hover{background:var(--danger);color:white}
+
+/* ══ TICKS ══ */
+.ticks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;padding:13px}
+.tick-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:11px;transition:border-color .2s}
+.tick-card:hover{border-color:var(--accent)}
+.tick-sym{font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:5px}
+.tick-price{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);margin-bottom:7px}
+.tick-ind{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.ti{font-size:10px;color:var(--muted)}.ti span{color:var(--text);font-family:var(--mono)}
+.strat-pill{display:inline-block;margin-top:7px;padding:2px 6px;border-radius:3px;
+  background:rgba(61,127,255,.15);color:var(--accent2);font-family:var(--mono);font-size:9px}
+
+/* ══ STAT BARS ══ */
+.stat-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.stat-label{width:65px;color:var(--muted);font-family:var(--mono);font-size:9px;flex-shrink:0}
+.stat-bw{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.stat-bf{height:100%;border-radius:2px;transition:width .5s}
+.stat-val{width:52px;text-align:right;font-family:var(--mono);font-size:10px}
+
+.empty{text-align:center;color:var(--muted);padding:28px;font-size:12px}
+
+select{background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:4px;padding:3px 8px;font-size:10px;font-family:var(--mono)}
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#0a0f18">
+  <link rel="apple-touch-icon" href="/static/alpha_logo.jpg">
+  <style>
+/* ══ PREMIUM FINTECH MOBILE EXPERIENCE (V7.25) ══ */
+@media (max-width: 600px) {
+  :root { --p-gap: 12px; }
+  
+  body { padding: 0; margin: 0; background: #05080d; }
+  header { 
+    padding: env(safe-area-inset-top) 16px 15px 16px; 
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,15,24,0.8);
+    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  
+  .header-brand { flex-direction: row; gap: 12px; }
+  .logo-img { width: 32px; height: 32px; }
+  .logo-main { font-size: 13px; letter-spacing: 0.05em; }
+  
+  .kpi-grid { 
+    grid-template-columns: 1fr 1fr; 
+    gap: 10px; 
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(0,229,176,0.03) 0%, rgba(0,0,0,0) 100%);
+  }
+  
+  .kpi { 
+    background: rgba(26,33,48,0.5); 
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+  
+  .kpi-label { font-size: 9px; color: var(--muted); text-transform: uppercase; margin-bottom: 5px; }
+  .kpi-value { font-size: 20px; font-weight: 800; }
+  
+  /* Transformation du Tableau Sniper en CARDS */
+  #sniper-board-body table, #sniper-board-body thead { display: none; }
+  #sniper-board-body { display: flex; flex-direction: column; gap: 10px; padding: 10px; }
+  
+  /* On va modifier le JS pour générer des div au lieu de tr si on détecte le mobile, 
+     ou on style les tr comme des blocs */
+  #sniper-board-body tr {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 15px;
+    position: relative;
+  }
+  #sniper-board-body td { display: block; border: none; padding: 2px 0; }
+  #sniper-board-body td:first-child { font-size: 14px; color: var(--accent); margin-bottom: 4px; }
+  #sniper-board-body td:nth-child(2) { font-size: 11px; color: var(--muted); position: absolute; top: 15px; right: 15px; }
+  #sniper-board-body td:last-child { font-size: 16px; text-align: right; margin-top: 5px; border-top: 1px solid var(--border); padding-top: 8px; }
+
+  .btn-tab { border-radius: 20px !important; font-size: 10px !important; }
+}
+body { -webkit-text-size-adjust: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-brand">
+    <img src="/static/alpha_logo.jpg" class="logo-img" alt="AONOSEKE LOGO">
+    <div class="brand-text">
+      <div class="logo-main">AONOSEKE BOT TRADING <span class="vtag">V7.22</span></div>
+      <div class="logo-sub">BY AONOSEKE HOUSE INVESTMENT DRC 2026</div>
+    </div>
+  </div>
+  <div class="hstatus">
+    <div class="dot" id="sdot"></div>
+    <span id="slabel">—</span>
+    <span id="account-badge" style="margin-left:8px;padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:10px;background:var(--surface2);border:1px solid var(--border)">---</span>
+    <span id="last-sync" style="margin-left:12px;font-size:9px;color:var(--muted);font-family:var(--mono)">Sync: --:--:--</span>
+  </div>
+  <div id="htime">—</div>
+  <div style="display:flex; gap:10px; margin-left:20px;">
+    <button onclick="switchMasterTab('dashboard')" id="btn-dash" class="btn-tab active" style="padding:6px 16px; background:var(--accent); color:var(--bg); border:none; border-radius:4px; font-family:var(--mono); font-size:11px; font-weight:700; cursor:pointer;">DASHBOARD</button>
+    <button onclick="switchMasterTab('risk')" id="btn-risk" class="btn-tab" style="padding:6px 16px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:4px; font-family:var(--mono); font-size:11px; font-weight:700; cursor:pointer;">RISK OS</button>
+  </div>
+</header>
+
+<main id="tab-dashboard-content">
+
+<!-- ══ EOD COUNTDOWN + GOLD ANALYSIS ══ -->
+<div id="eod-zone">
+  <div class="eod-top">
+    <div class="eod-left">
+      <div class="eod-title">⏱ Overnight Hedge Gold — Compte à rebours</div>
+      <div id="eod-countdown">--:--:--</div>
+      <div id="eod-label">Déclenchement à 20h55 GMT+0 · Magic 707170</div>
+      <div id="eod-status"></div>
+    </div>
+    <div class="eod-right">
+      <div id="gold-analysis-box">
+        <div class="ga-title">📊 Analyse Gold EOD (19h55 UTC)</div>
+        <div id="ga-empty">Analyse non disponible<br><span style="font-size:10px;font-family:var(--mono)">Lancez gold_analysis.py</span></div>
+        <div id="ga-content" style="display:none">
+          <div id="ga-direction">—</div>
+          <div id="ga-conf">—</div>
+          <div id="ga-signals"></div>
+          <div id="ga-reco"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TABLEAU D'ÉVALUATION SNIPER (Audit 15 Trades) ══ -->
+<div class="panel" style="margin-bottom:16px; border-top: 3px solid var(--accent);">
+  <div class="ph">
+    <span class="pt" style="font-size:12px; color:var(--text); font-weight:700;">🎯 TABLEAU D'ÉVALUATION SNIPER (Audit des 15 Trades du Jour)</span>
+    <span id="sniper-count" style="font-size:10px; color:var(--muted); font-family:var(--mono)">0 / 15 Opportunités</span>
+  </div>
+  <div id="sniper-board-body">
+    <div class="empty">En attente des premières opportunités sniper de la journée...</div>
+  </div>
+</div>
+
+<!-- ══ SESSIONS DE MARCHÉ ══ -->
+<div class="ph"><span class="pt" style="font-size:12px">Ouverture des Marchés Mondiaux</span></div>
+<div id="sessions-bar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px;"></div>
+
+<!-- ══ FILTRES GLOBAUX ══ -->
+<div class="panel" style="margin-bottom:16px; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; background:var(--surface2);">
+  <div style="font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:700;">FILTRES GLOBAUX DE PERFORMANCE</div>
+  <div style="display:flex; gap:12px;">
+    <select id="period-filter" style="padding:6px 12px; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:12px; outline:none; cursor:pointer;">
+      <option value="all">Toute la période</option>
+      <option value="day">Aujourd'hui (24h)</option>
+      <option value="week">7 derniers jours</option>
+      <option value="month" selected>30 derniers jours</option>
+      <option value="year">12 derniers mois</option>
+    </select>
+    <select id="sym-filter" style="padding:6px 12px; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:12px; outline:none; cursor:pointer;">
+      <option value="">Tous les symboles</option>
+    </select>
+  </div>
+</div>
+
+<!-- ══ KPIs ══ -->
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-label">Balance</div><div class="kpi-value" id="k-bal">—</div><div class="kpi-sub" id="k-acc">—</div></div>
+  <div class="kpi"><div class="kpi-label">Equity</div><div class="kpi-value" id="k-eq">—</div><div class="kpi-sub" id="k-eqdiff">—</div></div>
+  <div class="kpi"><div class="kpi-label">P&amp;L Total</div><div class="kpi-value" id="k-pnl">—</div><div class="kpi-sub" id="k-today">—</div></div>
+  <div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-value" id="k-wr">—</div><div class="kpi-sub" id="k-wl">—</div></div>
+  <div class="kpi"><div class="kpi-label">Profit Factor</div><div class="kpi-value" id="k-pf">—</div><div class="kpi-sub">ratio gain/perte</div></div>
+  <div class="kpi"><div class="kpi-label">Max Drawdown</div><div class="kpi-value neg" id="k-dd">—</div><div class="kpi-sub">depuis début</div></div>
+</div>
+
+<!-- ══ BILAN COMPTABLE ANALYTIQUE ══ -->
+<div class="panel" style="margin-bottom: 16px;">
+  <div class="ph"><span class="pt">Bilan Comptable Analytique</span></div>
+  <div class="pb" style="display:flex; justify-content:space-around; flex-wrap:wrap; gap:16px;">
+    <div style="text-align:center;">
+      <div style="font-size:10px; color:var(--muted); text-transform:uppercase; font-family:var(--mono); margin-bottom:5px;">Somme des Gains</div>
+      <div id="acct-gross-profit" style="font-size:20px; font-weight:700; color:var(--accent); font-family:var(--mono)">$0.00</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:10px; color:var(--muted); text-transform:uppercase; font-family:var(--mono); margin-bottom:5px;">Somme des Pertes</div>
+      <div id="acct-gross-loss" style="font-size:20px; font-weight:700; color:var(--danger); font-family:var(--mono)">$0.00</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:10px; color:var(--muted); text-transform:uppercase; font-family:var(--mono); margin-bottom:5px;">Résultat Net</div>
+      <div id="acct-net" style="font-size:20px; font-weight:700; font-family:var(--mono)">$0.00</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:10px; color:var(--muted); text-transform:uppercase; font-family:var(--mono); margin-bottom:5px;">Espérance / Trade</div>
+      <div id="acct-expected" style="font-size:20px; font-weight:700; font-family:var(--mono)">$0.00</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SENTIMENT FONDAMENTAL (IA) ══ -->
+<div class="panel" style="margin-bottom: 16px; border-left: 4px solid var(--accent2);">
+  <div class="ph">
+    <span class="pt">Intelligence Fondamentale (IA) — Gold</span>
+    <span id="sent-time" style="font-size:10px; color:var(--muted); font-family:var(--mono)">Mise à jour: --:--:--</span>
+  </div>
+  <div class="pb" style="display:flex; align-items:center; gap:20px;">
+    <div id="sent-gauge" style="width:70px; height:70px; display:flex; align-items:center; justify-content:center; border:2px solid var(--border); border-radius:50%; font-family:var(--mono); font-weight:700; font-size:22px; flex-shrink:0;">
+      0
+    </div>
+    <div style="flex:1">
+      <div id="sent-bias" style="font-family:var(--mono); font-size:14px; font-weight:700; margin-bottom:5px;">ANALYSE EN COURS...</div>
+      <div id="sent-summary" style="font-size:12px; line-height:1.4; color:var(--text)">Veuillez lancer gold_news_feed.py pour activer l'intelligence artificielle fondamentale.</div>
+      <div id="sent-headlines" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:10px; color:var(--muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+        Chargement des actualités mondiales...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EQUITY + POSITIONS ══ -->
+<div class="row2">
+  <div class="panel">
+    <div class="ph"><span class="pt">Courbe Equity</span><span style="font-size:10px;color:var(--muted)" id="eq-count">0 trades</span></div>
+    <div class="pb">
+      <div class="chart-wrap">
+        <div id="eq-empty-msg" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px;">En attente de trades...</div>
+        <canvas id="eq-chart" style="position:relative; z-index:10;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">Positions ouvertes</span><span style="font-size:10px;color:var(--muted)" id="pos-count">—</span></div>
+    <div id="pos-body"><div class="empty">Aucune position</div></div>
+  </div>
+</div>
+
+<!-- ══ TICKS ══ -->
+<div class="panel">
+  <div class="ph"><span class="pt">Instruments — Temps réel</span><span style="font-size:10px;color:var(--muted)">3s</span></div>
+  <div id="ticks-grid" class="ticks-grid"><div class="empty" style="grid-column:1/-1">Chargement…</div></div>
+</div>
+
+<!-- ══ STATS ══ -->
+<div class="row2">
+  <div class="panel"><div class="ph"><span class="pt">P&amp;L par symbole</span></div><div class="pb" id="sym-bars"><div class="empty">—</div></div></div>
+  <div class="panel"><div class="ph"><span class="pt">P&amp;L par session</span></div><div class="pb" id="sess-bars"><div class="empty">—</div></div></div>
+</div>
+
+<!-- ══ TRADES ══ -->
+<div class="panel" style="margin-bottom:16px;">
+  <div class="ph">
+    <span class="pt">Derniers trades</span>
+  </div>
+  <div id="trades-body"><div class="empty">Chargement…</div></div>
+</div>
+
+<!-- ══ APPRENTISSAGE ADAPTATIF ══ -->
+<div class="panel" style="margin-bottom:32px;">
+  <div class="ph" style="border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+    <span class="pt" style="color:var(--accent); display:flex; align-items:center; gap:8px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      Apprentissage Adaptatif (IA 3 Niveaux)
+    </span>
+    <span style="font-size:12px; color:var(--muted);" id="ml-status">Chargement...</span>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    
+    <!-- Insights & N1/N2 -->
+    <div>
+      <div style="font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:12px; letter-spacing:1px; text-transform:uppercase;">N1/N2 — Insights Générés</div>
+      <div id="ml-insights" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="empty" style="padding:20px;">Aucun insight disponible</div>
+      </div>
+    </div>
+    
+    <!-- Episodic Memory N3 -->
+    <div>
+      <div style="font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:12px; letter-spacing:1px; text-transform:uppercase;">N3 — Mémoire Épisodique Récente</div>
+      <div id="ml-memory" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="empty" style="padding:20px;">Mémoire vide</div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+</main>
+
+<main id="tab-risk-content" style="display:none; padding:16px 20px;">
+  <div class="panel" style="height: calc(100vh - 120px);">
+    <iframe src="/risk" style="width:100%; height:100%; border:none; border-radius:8px;"></iframe>
+  </div>
+</main>
+
+<script>
+function switchMasterTab(tabId) {
+  const dash = document.getElementById('tab-dashboard-content');
+  const risk = document.getElementById('tab-risk-content');
+  const btnDash = document.getElementById('btn-dash');
+  const btnRisk = document.getElementById('btn-risk');
+  
+  if(tabId === 'dashboard') {
+    dash.style.display = 'flex';
+    risk.style.display = 'none';
+    btnDash.style.background = 'var(--accent)';
+    btnDash.style.color = 'var(--bg)';
+    btnRisk.style.background = 'var(--surface2)';
+    btnRisk.style.color = 'var(--text)';
+  } else {
+    dash.style.display = 'none';
+    risk.style.display = 'block';
+    btnRisk.style.background = 'var(--accent)';
+    btnRisk.style.color = 'var(--bg)';
+    btnDash.style.background = 'var(--surface2)';
+    btnDash.style.color = 'var(--text)';
+  }
+}
+
+// ══ SESSIONS DE MARCHÉ (heures UTC) ══════════════════════════
+const SESSIONS = [
+  { name: "TOKYO",    open: 23, close: 8,  assets: "JPY, Or, ASX",     color: "#ff6b9d", overnight: true },
+  { name: "LONDON",   open: 7,  close: 16, assets: "EUR, GBP, Or",     color: "#00e5b0", overnight: false },
+  { name: "NEW YORK", open: 12, close: 21, assets: "US500, USD, Or",   color: "#3d7fff", overnight: false },
+  { name: "SYDNEY",   open: 21, close: 6,  assets: "AUD, NZD",         color: "#a78bfa", overnight: true },
+  { name: "SYNTHETICS", open: 0,  close: 24, assets: "V100, V75, Boom",  color: "#ffd166", overnight: false, always_open: true },
+];
+
+const BOT_SESSIONS = [
+  { name: "BOT GOLD",     open: 7,  close: 23, assets: "XAUUSD Uniquement", color: "#fbbf24", overnight: false },
+  { name: "BOT FX MATIN", open: 2,  close: 12, assets: "Forex & US30",      color: "#38bdf8", overnight: false },
+  { name: "BOT FX APREM", open: 13, close: 18, assets: "Forex & US30",      color: "#818cf8", overnight: false },
+  { name: "BOT FX NUIT",  open: 22, close: 24, assets: "Forex & US30",      color: "#c084fc", overnight: false },
+];
+
+function isSessionOpen(s) {
+  if (s.always_open) return true;
+  const now = new Date();
+  const h = now.getUTCHours();
+  const m = now.getUTCMinutes();
+  const day = now.getUTCDay(); // 0=Dim, 6=Sam
+  
+  // Fermé le samedi et dimanche (sauf dimanche soir pour Sydney/Tokyo)
+  if (day === 6) return false;
+  if (day === 0 && h < 21) return false; 
+  if (day === 1 && h < s.open && s.overnight && s.open > 20) return false; // Cas spécifique lundi matin tôt
+
+  const time = h * 60 + m;
+  const open = s.open * 60, close = s.close * 60;
+  if (s.overnight) return time >= open || time < close;
+  return time >= open && time < close;
+}
+
+function sessionProgress(s) {
+  const h = new Date().getUTCHours(), m = new Date().getUTCMinutes();
+  const now = h * 60 + m;
+  const open = s.open * 60, close = s.close * 60;
+  const dur = s.overnight ? (24*60 - open + close) : (close - open);
+  let elapsed;
+  if (s.overnight) {
+    elapsed = now >= open ? now - open : (24*60 - open + now);
+  } else {
+    elapsed = now - open;
+  }
+  return Math.max(0, Math.min(100, elapsed / dur * 100));
+}
+
+function getNextOpenDate(s) {
+  let d = new Date();
+  d.setUTCHours(s.open, 0, 0, 0);
+  if (d <= new Date()) d.setUTCDate(d.getUTCDate() + 1);
+  while (d.getUTCDay() === 6 || (d.getUTCDay() === 0 && d.getUTCHours() < 21)) {
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return d;
+}
+
+function getNextCloseDate(s) {
+  let d = new Date();
+  d.setUTCHours(s.close, 0, 0, 0);
+  if (d <= new Date()) d.setUTCDate(d.getUTCDate() + 1);
+  return d;
+}
+
+function fmtTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function renderSessionGroup(sessionsArray, containerId) {
+  let html = '';
+  const now = new Date();
+  sessionsArray.forEach(s => {
+    const open   = isSessionOpen(s);
+    const pct    = open ? sessionProgress(s).toFixed(1) : 0;
+    
+    let cdText = '';
+    let soon = false;
+    
+    if (s.always_open) {
+      cdText = `<div class="sc-countdown open" style="font-family:var(--mono); font-size:14px; font-weight:700; margin-top:6px; color:var(--accent);">TOUJOURS OUVERT</div>`;
+    } else {
+      if (open) {
+        const nextClose = getNextCloseDate(s);
+        const diffSec = Math.floor((nextClose - now)/1000);
+        cdText = `<div class="sc-countdown open" style="font-family:var(--mono); font-size:14px; font-weight:700; margin-top:6px; color:var(--accent);">Ferme dans ${fmtTime(diffSec)}</div>`;
+      } else {
+        const nextOpen = getNextOpenDate(s);
+        const diffSec = Math.floor((nextOpen - now)/1000);
+        soon = diffSec <= 1800; // 30 mins
+        cdText = `<div class="sc-countdown closed" style="font-family:var(--mono); font-size:14px; font-weight:700; margin-top:6px; color:var(--danger);">Ouvre dans ${fmtTime(diffSec)}</div>`;
+      }
+    }
+    
+    const cls = open ? 'active' : (soon ? 'soon' : '');
+    const kOpen = (s.open + 1) % 24;
+    const kClose = (s.close + 1) % 24;
+    const kinRange = s.overnight
+      ? `${String(kOpen).padStart(2,'0')}h00–${String(kClose).padStart(2,'0')}h00 Kinshasa (+1j)`
+      : `${String(kOpen).padStart(2,'0')}h00–${String(kClose).padStart(2,'0')}h00 Kinshasa`;
+    html += `
+      <div class="session-card ${cls}">
+        <div class="sc-name" style="color:${open?s.color:'var(--text)'}">${s.name}</div>
+        <div class="sc-hours">${s.always_open ? '24/7' : kinRange}</div>
+        <div class="sc-assets" style="font-size:10px;color:var(--muted)">${s.assets}</div>
+        ${cdText}
+        <div class="sc-bar"><div class="sc-bar-fill" style="width:${pct}%;background:${s.color}"></div></div>
+      </div>`;
+  });
+  document.getElementById(containerId).innerHTML = html;
+}
+
+function renderSessions() {
+  renderSessionGroup(BOT_SESSIONS, 'bot-sessions-bar');
+  renderSessionGroup(SESSIONS, 'sessions-bar');
+}
+
+// ══ EOD COUNTDOWN ═════════════════════════════════════════════
+function updateEODCountdown() {
+  const now = new Date();
+  // Prochaine occurrence de 20h55 UTC
+  let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 20, 55, 0));
+  if (now >= target) target.setUTCDate(target.getUTCDate() + 1);
+
+  // LOGIQUE CALENDRIER : Sauter les weekends (Samedi=6, Dimanche=0)
+  // L'Overnight Hedge Gold ne tourne pas le weekend.
+  while (target.getUTCDay() === 0 || target.getUTCDay() === 6) {
+    target.setUTCDate(target.getUTCDate() + 1);
+  }
+
+  const diff = Math.max(0, Math.floor((target - now) / 1000));
+  const hh   = Math.floor(diff / 3600);
+  const mm   = Math.floor((diff % 3600) / 60);
+  const ss   = diff % 60;
+  const str  = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  const el   = document.getElementById('eod-countdown');
+  el.textContent = str;
+  el.className   = diff < 3600 ? 'urgent' : '';
+
+  const lbl = diff < 300 ? '🔴 IMMINENT — Hedge en cours de déclenchement !'
+            : diff < 3600 ? `⚠️ Dans moins d'une heure — Analyse Gold en cours`
+            : `Déclenchement à 21h55 Kinshasa (20h55 GMT+0) · Magic 707170`;
+  document.getElementById('eod-label').textContent = lbl;
+}
+
+// ══ GOLD ANALYSIS ════════════════════════════════════════════
+async function loadGoldAnalysis() {
+  try {
+    const r = await fetch('/api/gold_analysis');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || d.status === 'not_available') return;
+
+    document.getElementById('ga-empty').style.display   = 'none';
+    document.getElementById('ga-content').style.display = 'block';
+
+    const dir = d.direction || 'NEUTRAL';
+    const dirEl = document.getElementById('ga-direction');
+    dirEl.textContent = dir;
+    dirEl.className   = dir.toLowerCase();
+
+    const age = Math.floor((Date.now()/1000 - (d.ts||0)) / 60);
+    document.getElementById('ga-conf').textContent =
+      `Confiance ${d.confidence||0}% · Score ${d.score>0?'+':''}${d.score||0} · il y a ${age}min`;
+
+    const sigs = (d.signals||[]).filter(s => s.weight !== 0 || s.name === 'Spread');
+    let sh = '';
+    sigs.forEach(s => {
+      const icon = s.weight > 0 ? '▲' : s.weight < 0 ? '▼' : '●';
+      const c    = s.weight > 0 ? 'var(--accent)' : s.weight < 0 ? 'var(--danger)' : 'var(--muted)';
+      sh += `<div class="ga-sig"><span class="ga-sig-name" style="color:${c}">${icon} ${s.name}</span><span class="ga-sig-val">${s.value}</span></div>`;
+    });
+    document.getElementById('ga-signals').innerHTML = sh;
+    document.getElementById('ga-reco').textContent  = d.recommendation || '';
+  } catch(e) {}
+}
+
+// ══ APPRENTISSAGE ADAPTATIF ══════════════════════════════════
+async function loadLearningState() {
+  try {
+    const r = await fetch('/api/learning_state');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || !d.version) {
+      document.getElementById('ml-status').textContent = 'Données IA non disponibles';
+      return;
+    }
+    
+    // Status global
+    let acc = d.n2_accuracy ? (d.n2_accuracy*100).toFixed(1)+'%' : 'N/A';
+    let age = d.last_update ? Math.floor((Date.now()/1000 - d.last_update) / 60) : 0;
+    let ageStr = age < 60 ? `${age}m` : `${Math.floor(age/60)}h${age%60}m`;
+    document.getElementById('ml-status').textContent = `Mise à jour: il y a ${ageStr} | XGBoost Acc: ${acc} | N3 Souvenirs: ${(d.n3_episodes||[]).length}`;
+    
+    // Insights N1/N2
+    const insights = d.insights || [];
+    let insHtml = '';
+    if (insights.length > 0) {
+      insights.forEach(ins => {
+        let color = ins.type === 'warning' ? 'var(--danger)' : ins.type === 'symbol' ? 'var(--accent)' : 'var(--success)';
+        insHtml += `
+          <div style="background:var(--bg); border:1px solid var(--border); border-left:3px solid ${color}; padding:10px 12px; border-radius:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span style="font-size:13px; font-weight:700; color:var(--text);">${ins.title}</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); margin-bottom:6px;">${ins.detail}</div>
+            <div style="font-family:var(--mono); font-size:11px; color:${color};">→ ${ins.action}</div>
+          </div>`;
+      });
+    } else {
+      insHtml = `<div class="empty">En attente d'assez de données pour générer des insights</div>`;
+    }
+    document.getElementById('ml-insights').innerHTML = insHtml;
+    
+    // Memory N3
+    const episodes = d.n3_episodes || [];
+    let memHtml = '';
+    if (episodes.length > 0) {
+      // Afficher les 5 plus pertinents
+      episodes.slice(0, 5).forEach(ep => {
+        const isWin = ep.outcome === 'win';
+        const color = isWin ? 'var(--success)' : 'var(--danger)';
+        const icon  = isWin ? '✓' : '✗';
+        const pnl   = Math.abs(ep.pnl).toFixed(2);
+        
+        memHtml += `
+          <div style="background:var(--bg); border:1px solid var(--border); padding:8px 12px; border-radius:4px; display:flex; gap:10px; align-items:flex-start;">
+            <div style="color:${color}; font-size:14px; font-weight:bold; margin-top:1px;">${icon}</div>
+            <div style="flex:1;">
+              <div style="font-size:12px; color:var(--text); line-height:1.4;">${ep.lesson}</div>
+            </div>
+          </div>`;
+      });
+    } else {
+      memHtml = `<div class="empty">La mémoire épisodique se construit...</div>`;
+    }
+    document.getElementById('ml-memory').innerHTML = memHtml;
+    
+  } catch(e) {
+    console.error("Erreur loadLearningState", e);
+  }
+}
+
+// ══ UTILS ═════════════════════════════════════════════════════
+let eqChart = null;
+const set    = (id,h) => { const e=document.getElementById(id); if(e) e.innerHTML=h };
+const setText= (id,t,c)=> { const e=document.getElementById(id); if(!e)return; e.textContent=t; if(c) e.className='kpi-value '+c };
+const fmt    = (n,d=2) => { if(n==null||isNaN(n))return'—'; const v=parseFloat(n); return(v>=0?'+':'')+v.toFixed(d) };
+const fmtUSD = n => '$'+Math.abs(parseFloat(n||0)).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const cc     = v => parseFloat(v)>=0?'pos-num':'neg-num';
+const fmtTs  = ts => ts ? new Date(ts*1000).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+
+function buildChart(curve) {
+  const ctx = document.getElementById('eq-chart').getContext('2d');
+  const clr = (curve[curve.length-1]||0) >= 0 ? '#00e5b0' : '#ff4d6d';
+  if (eqChart) eqChart.destroy();
+  eqChart = new Chart(ctx, {
+    type:'line',
+    data:{labels:curve.map((_,i)=>''),datasets:[{data:curve,borderColor:clr,borderWidth:1.5,
+      pointRadius:0,tension:0.3,fill:true,
+      backgroundColor:c=>{const g=c.chart.ctx.createLinearGradient(0,0,0,170);
+        g.addColorStop(0,clr+'28');g.addColorStop(1,clr+'00');return g}}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+c.parsed.y.toFixed(2)}}},
+      scales:{x:{display:false},y:{grid:{color:'#1a2130'},
+        ticks:{color:'#4a5568',font:{family:'Space Mono',size:9},callback:v=>'$'+v.toFixed(0)}}}}
+  });
+}
+
+// ══ STATUS ════════════════════════════════════════════════════
+async function loadStatus() {
+  try {
+    const d = await fetch('/api/status').then(r=>r.json());
+    const bal=parseFloat(d.balance||0), eq=parseFloat(d.equity||0), diff=eq-bal;
+    setText('k-bal', fmtUSD(bal));
+    setText('k-eq',  fmtUSD(eq));
+    set('k-eqdiff', `<span class="${cc(diff)}">${fmt(diff)} USD</span>`);
+    
+    // Gestion du contexte dynamique
+    const ctx = d.context || {};
+    const badge = document.getElementById('account-badge');
+    if (ctx.broker) {
+      badge.textContent = `${ctx.broker} ${ctx.mode} · ${ctx.account}`;
+      badge.style.color = ctx.mode === 'REAL' ? 'var(--gold)' : 'var(--accent2)';
+      badge.style.borderColor = ctx.mode === 'REAL' ? 'var(--gold)' : 'var(--accent2)';
+      set('k-acc', `${ctx.broker} ${ctx.mode} · Compte ${ctx.account}`);
+    } else {
+      set('k-acc', 'Compte '+d.account+' · '+d.server);
+    }
+
+    set('k-today', `${d.trades_today||0} trades aujourd'hui`);
+    
+    // Affichage de la dernière synchro MT5
+    if (d.ts) {
+      const syncDate = new Date(d.ts * 1000);
+      document.getElementById('last-sync').textContent = `MT5 Sync: ${syncDate.toLocaleTimeString('fr-FR')}`;
+      if (Date.now()/1000 - d.ts > 60) document.getElementById('last-sync').style.color = 'var(--danger)';
+      else document.getElementById('last-sync').style.color = 'var(--muted)';
+    }
+
+    const dot=document.getElementById('sdot'),lbl=document.getElementById('slabel');
+    if(d.strategy_paused){dot.className='dot paused';lbl.textContent='PAUSED'}
+    else if(!d.trading){dot.className='dot off';lbl.textContent='STOPPED'}
+    else{dot.className='dot live';lbl.textContent='LIVE · '+d.server}
+    document.getElementById('htime').textContent='UTC '+new Date().toUTCString().slice(17,25)+' · '+new Date().toLocaleTimeString('fr-FR');
+
+    const pos=d.positions||[];
+    set('pos-count', pos.length+' position'+(pos.length>1?'s':''));
+    if(!pos.length){set('pos-body','<div class="empty">Aucune position ouverte</div>');return}
+    let h='<table><thead><tr><th>Sym</th><th>Type</th><th>Lot</th><th>Prix</th><th>S.L. (Trail)</th><th>P&L</th><th>Action</th></tr></thead><tbody>';
+    pos.forEach(p=>{const pnl=parseFloat(p.pnl||0);
+      const isGold = p.sym.includes('XAU') || p.sym.includes('GOLD');
+      const dec = isGold ? 2 : (p.sym.includes('100') ? 2 : 5);
+      h+=`<tr><td style="font-family:var(--mono);font-weight:700">${p.sym}</td>
+          <td><span class="badge badge-${p.type.toLowerCase()}">${p.type}</span></td>
+          <td>${parseFloat(p.lot).toFixed(2)}</td>
+          <td style="font-family:var(--mono);font-size:11px">${parseFloat(p.price).toFixed(dec)}</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--warn)">${parseFloat(p.sl||0).toFixed(dec)}</td>
+          <td class="${cc(pnl)}" style="font-family:var(--mono)">${fmt(pnl)} $</td>
+          <td><button class="btn-close" onclick="executeClose(${p.ticket})">CLOSE</button></td></tr>`});
+    set('pos-body',h+'</tbody></table>');
+  } catch(e){}
+}
+
+async function executeClose(ticket) {
+  try {
+    const r = await fetch('/api/close_position', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ticket})
+    });
+    if(r.ok) {
+      console.log(`Commande de fermeture envoyée pour #${ticket}`);
+      loadStatus();
+    }
+  } catch(e) { console.error("Erreur lors de la fermeture", e); }
+}
+
+// ══ TICKS ════════════════════════════════════════════════════
+async function loadTicks() {
+  try {
+    const ticks=await fetch('/api/ticks').then(r=>r.json());
+    if(!ticks.length) return;
+    const rl=r=>r===1?'↑ TREND':r===-1?'↓ TREND':'— RANGE';
+    const rc=r=>r===1?'var(--accent)':r===-1?'var(--danger)':'var(--muted)';
+    let h='';
+    ticks.forEach(t=>{
+      const rsiC=t.rsi>60?'var(--warn)':t.rsi<40?'var(--accent2)':'var(--text)';
+      const isJPY=t.sym.includes('JPY'); 
+      const isIdx=t.sym.includes('US')||t.sym.includes('500')||t.sym.includes('30')||t.sym.includes('100')||t.sym.includes('Volatility');
+      const dec=isJPY?3:isIdx?2:5;
+      const isGold=t.sym.includes('XAU')||t.sym.includes('GOLD');
+      h+=`<div class="tick-card">
+        <div class="tick-sym" style="${isGold?'color:var(--gold)':''}">${t.sym}</div>
+        <div class="tick-price" style="${isGold?'color:var(--gold)':''}">${parseFloat(t.bid).toFixed(dec)}</div>
+        <div class="tick-ind">
+          <div class="ti">RSI <span style="color:${rsiC}">${parseFloat(t.rsi).toFixed(1)}</span></div>
+          <div class="ti">ADX <span>${parseFloat(t.adx).toFixed(1)}</span></div>
+          <div class="ti">ATR <span>${parseFloat(t.atr).toFixed(isGold?2:4)}</span></div>
+          <div class="ti">Sprd <span>${t.spread}</span></div>
+        </div>
+        <div style="margin-top:7px;font-size:10px;font-family:var(--mono);color:${rc(t.regime)}">${rl(t.regime)}</div>
+        ${t.active_strat&&t.active_strat!=='WAIT'&&t.active_strat!=='INIT'?`<div class="strat-pill">${t.active_strat}</div>`:''}
+      </div>`;
+    });
+    set('ticks-grid',h);
+  } catch(e){}
+}
+
+// ══ STATS ════════════════════════════════════════════════════
+async function loadStats() {
+  try {
+    const period=document.getElementById('period-filter').value;
+    const sym=document.getElementById('sym-filter').value;
+    let url = `/api/stats?period=${period}`;
+    if(sym) url += `&symbol=${sym}`;
+    
+    const s=await fetch(url).then(r=>r.json());
+    if(!s.total_trades) {
+      // Réinitialiser à zéro si aucun trade
+      setText('k-pnl', '0.00 $'); setText('k-wr', '0%'); set('k-wl', '0W / 0L');
+      setText('k-pf', '0.00'); setText('k-dd', '-$0.00');
+      setText('acct-gross-profit', '$0,00'); setText('acct-gross-loss', '$0,00');
+      setText('acct-net', '$0,00'); setText('acct-expected', '$0,00');
+      document.getElementById('eq-empty-msg').style.display='flex';
+      set('eq-count','0 trades');
+      if(eqChart) eqChart.destroy();
+      set('sym-bars','<div class="empty">—</div>');
+      set('sess-bars','<div class="empty">—</div>');
+      return;
+    }
+    const pnl=parseFloat(s.total_pnl);
+    setText('k-pnl',fmt(pnl)+' $',pnl>=0?'pos':'neg');
+    setText('k-wr',s.win_rate+'%',s.win_rate>=50?'pos':'neg');
+    set('k-wl',`${s.wins}W / ${s.losses}L`);
+    const pf=parseFloat(s.profit_factor);
+    setText('k-pf',pf.toFixed(2),pf>=1?'pos':'neg');
+    setText('k-dd','-$'+parseFloat(s.max_drawdown).toFixed(2),'neg');
+    
+    // Bilan Comptable — FIX SIGNE : utiliser fmt() qui gère le signe natif
+    const gProfit=parseFloat(s.gross_profit||0), gLoss=parseFloat(s.gross_loss||0), exp=parseFloat(s.expected_payoff||0);
+    const fmtSigned = (v) => { const abs='$'+Math.abs(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); return (v>=0?'+':'-')+abs; };
+    setText('acct-gross-profit', gProfit>0 ? '+'+fmtUSD(gProfit) : '$0,00');
+    setText('acct-gross-loss',   gLoss<0  ? '-'+fmtUSD(Math.abs(gLoss)) : '$0,00');
+    setText('acct-net',      fmtSigned(pnl),  pnl>=0?'pos':'neg');
+    setText('acct-expected', fmtSigned(exp),  exp>=0?'pos':'neg');
+
+    if(s.equity_curve&&s.equity_curve.length){
+      document.getElementById('eq-empty-msg').style.display='none';
+      buildChart(s.equity_curve);
+      set('eq-count',s.total_trades+' trades');
+    } else {
+      document.getElementById('eq-empty-msg').style.display='flex';
+      set('eq-count','0 trades');
+    }
+    renderBars('sym-bars',s.by_symbol,k=>{const d=s.by_symbol[k];return{label:k,value:d.pnl,sub:`${d.trades}t · ${Math.round((d.wins||0)/d.trades*100)||0}%WR`}});
+    renderBars('sess-bars',s.by_session,k=>{const d=s.by_session[k];return{label:k,value:d.pnl,sub:`${d.trades}t`}});
+  } catch(e){}
+}
+
+function renderBars(id,data,mapper) {
+  const keys=Object.keys(data);if(!keys.length)return;
+  const max=Math.max(...keys.map(k=>Math.abs(parseFloat(data[k].pnl||0))),0.01);
+  let h='';
+  keys.sort((a,b)=>parseFloat(data[b].pnl||0)-parseFloat(data[a].pnl||0)).forEach(k=>{
+    const m=mapper(k),v=parseFloat(m.value),pct=Math.abs(v)/max*100,c=v>=0?'var(--accent)':'var(--danger)';
+    h+=`<div class="stat-row"><div class="stat-label">${m.label}</div>
+        <div class="stat-bw"><div class="stat-bf" style="width:${pct}%;background:${c}"></div></div>
+        <div class="stat-val ${v>=0?'pos-num':'neg-num'}">${fmt(v)}$</div></div>
+        <div style="margin:-5px 0 8px 74px;font-size:9px;color:var(--muted)">${m.sub}</div>`;
+  });
+  set(id,h);
+}
+
+// ══ TRADES ════════════════════════════════════════════════════
+let allSyms=new Set();
+async function loadSentiment() {
+  try {
+    const d = await fetch('/api/sentiment').then(r=>r.json());
+    if (!d || !d.analysis) return;
+    const a = d.analysis;
+    const score = parseFloat(a.score || 0);
+    const timeStr = d.timestamp ? d.timestamp.split('T')[1].split('.')[0] : '--:--:--';
+    
+    document.getElementById('sent-time').textContent = 'Mise à jour: ' + timeStr;
+    const g = document.getElementById('sent-gauge');
+    g.textContent = (score > 0 ? '+' : '') + score;
+    g.style.color = score > 0 ? 'var(--accent)' : (score < 0 ? 'var(--danger)' : 'var(--text)');
+    g.style.borderColor = score > 0 ? 'var(--accent)' : (score < 0 ? 'var(--danger)' : 'var(--border)');
+    
+    const b = document.getElementById('sent-bias');
+    b.textContent = a.bias;
+    b.style.color = score > 0 ? 'var(--accent)' : (score < 0 ? 'var(--danger)' : 'var(--text)');
+    
+    document.getElementById('sent-summary').textContent = a.summary;
+    
+    const hl = d.headlines || [];
+    if (hl.length > 0) {
+      document.getElementById('sent-headlines').innerHTML = '🌍 ' + hl.join(' | ');
+    }
+  } catch(e) {}
+}
+
+async function loadTrades() {
+  try {
+    const sym=document.getElementById('sym-filter').value;
+    const period=document.getElementById('period-filter').value;
+    const url='/api/history?limit=200'+(sym?'&symbol='+sym:'')+(period?'&period='+period:'');
+    const d=await fetch(url).then(r=>r.json());
+    const trades=d.trades||[];
+    
+    updateSniperBoard(trades); // Mise à jour du nouveau tableau d'audit
+
+    trades.forEach(t=>allSyms.add(t.symbol));
+    const sel=document.getElementById('sym-filter');
+    sel.innerHTML='<option value="">Tous les symboles</option>'+[...allSyms].map(s=>`<option value="${s}" ${s===sym?'selected':''}>${s}</option>`).join('');
+    if(!trades.length){set('trades-body','<div class="empty">Aucun trade</div>');return}
+    const recent=trades.slice().reverse().slice(0,100);
+    let h='<table><thead><tr><th>Date</th><th>Sym</th><th>Type</th><th>Lot</th><th>Entrée</th><th>Sortie</th><th>P&L</th><th>RSI</th><th>ADX</th><th>Session</th></tr></thead><tbody>';
+    recent.forEach(t=>{
+      const pnl=parseFloat(t.pnl||0);
+      h+=`<tr>
+        <td style="color:var(--muted);font-size:11px;white-space:nowrap">${fmtTs(t.time_open)}</td>
+        <td style="font-family:var(--mono);font-weight:700;font-size:11px">${t.symbol}</td>
+        <td><span class="badge badge-${(t.type||'').toLowerCase()}">${(t.type||'').toUpperCase()}</span></td>
+        <td style="font-size:11px">${parseFloat(t.volume||0).toFixed(2)}</td>
+        <td style="font-family:var(--mono);font-size:10px">${parseFloat(t.price_open||0).toFixed(2)}</td>
+        <td style="font-family:var(--mono);font-size:10px">${parseFloat(t.price_close||0).toFixed(2)}</td>
+        <td class="${cc(pnl)}" style="font-family:var(--mono);font-weight:700">${fmt(pnl)}$</td>
+        <td style="font-family:var(--mono);font-size:10px">${parseFloat(t.rsi||0).toFixed(1)}</td>
+        <td style="font-family:var(--mono);font-size:10px">${parseFloat(t.adx||0).toFixed(1)}</td>
+        <td style="font-size:10px;color:var(--muted)">${t.session||'—'}</td>
+      </tr>`;
+    });
+    set('trades-body',h+'</tbody></table>');
+  } catch(e){}
+}
+
+function updateSniperBoard(trades) {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+  
+  // On ne garde que les trades d'aujourd'hui qui ne sont pas des EOD (Magic < 707170)
+  const sniperTrades = trades.filter(t => t.time_open >= startOfDay && t.magic < 707170);
+  
+  document.getElementById('sniper-count').textContent = `${sniperTrades.length} / 15 Opportunités`;
+  
+  if(sniperTrades.length === 0) {
+    set('sniper-board-body', '<div class="empty">Aucun trade sniper détecté aujourd\'hui. En attente de confluences...</div>');
+    return;
+  }
+
+  let h = '<table><thead><tr><th>Marché</th><th>Heure</th><th>Raisonnement du Bot</th><th>Durée</th><th>Résultat</th></tr></thead><tbody>';
+  
+  sniperTrades.reverse().forEach(t => {
+    const pnl = parseFloat(t.pnl || 0);
+    const time = new Date(t.time_open * 1000).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    
+    // Construction du raisonnement basé sur les indicateurs exportés
+    let reason = `<span style="color:var(--accent2)">IA ${Math.round((t.confluence||0)*100)}%</span> | `;
+    reason += `RSI ${parseFloat(t.rsi).toFixed(0)} `;
+    reason += t.rsi > 70 ? '(Surchauffe)' : t.rsi < 30 ? '(Sursollicité)' : '';
+    reason += ` | ADX ${parseFloat(t.adx).toFixed(0)}`;
+    if(t.regime === 1) reason += ' | <span style="color:var(--accent)">Tendance ↑</span>';
+    if(t.regime === -1) reason += ' | <span style="color:var(--danger)">Tendance ↓</span>';
+
+    // Calcul durée
+    const durSec = parseInt(t.duration || 0);
+    const durStr = durSec > 3600 ? `${Math.floor(durSec/3600)}h ${Math.floor((durSec%3600)/60)}m` 
+                                : `${Math.floor(durSec/60)}m ${durSec%60}s`;
+
+    h += `<tr>
+      <td style="font-family:var(--mono); font-weight:700; color:var(--accent)">${t.symbol}</td>
+      <td style="font-family:var(--mono); font-size:11px;">${time}</td>
+      <td style="font-size:10px; color:var(--text)">${reason}</td>
+      <td style="font-size:11px; color:var(--muted)">${durStr}</td>
+      <td class="${cc(pnl)}" style="font-family:var(--mono); font-weight:700">${fmt(pnl)}$</td>
+    </tr>`;
+  });
+  
+  set('sniper-board-body', h + '</tbody></table>');
+}
+
+// ══ INIT ═════════════════════════════════════════════════════// EVENTS
+document.getElementById('period-filter').addEventListener('change',()=> { loadStats(); loadTrades(); });
+document.getElementById('sym-filter').addEventListener('change',()=> { loadStats(); loadTrades(); });
+
+async function refresh() {
+  await Promise.all([loadStatus(), loadTicks(), loadStats(), loadTrades(), loadGoldAnalysis(), loadSentiment(), loadLearningState()]);
+}
+
+// Tickers rapides (pas de fetch)
+setInterval(()=>{updateEODCountdown();renderSessions()}, 1000);
+setInterval(refresh, 3000);
+renderSessions();
+updateEODCountdown();
+refresh();
+</script>
+</body>
+</html>

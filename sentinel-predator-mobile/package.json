@@ -5,6 +5,7 @@
   "scripts": {
     "start": "expo start",
     "predator": "npx expo start",
+    "dev:total": "concurrently \"python3 ../api_server.py\" \"npx expo start --web\"",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

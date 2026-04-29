@@ -53,6 +53,10 @@ class GlobalMonitor:
         self.global_withdrawal_alerted = False  # alerte retrait global envoyée
         self.WITHDRAWAL_TRADE_PCT = 200  # % du volume pour alerte retrait par trade
         self.WITHDRAWAL_GLOBAL_PCT = 100  # % du dépôt initial pour alerte retrait global
+        # V7.22 — OVERNIGHT HEDGE Countdown
+        self.overnight_hedge_target = "20:55"  # GMT+0
+        self.overnight_alerts_sent = set()  # {5min, 1min, 30s, 10s, 0s}
+        self.last_overnight_day = None
 
     def detect_active_account(self):
         """Lit status.json pour détecter le compte MT5 actif."""
@@ -121,6 +125,68 @@ class GlobalMonitor:
             # Souvent une erreur de lecture concurrente si l'EA écrit en même temps
             return None
 
+    async def check_overnight_hedge_countdown(self):
+        """
+        V7.22 — Annonce le compte à rebours avant l'exécution OVERNIGHT HEDGE à 20:55 GMT+0.
+        Envoie des alertes à -5min, -1min, -30s, -10s, et à l'exécution.
+        """
+        now = datetime.utcnow()
+        current_day = now.date()
+        
+        # Reset les alertes chaque jour
+        if self.last_overnight_day != current_day:
+            self.overnight_alerts_sent = set()
+            self.last_overnight_day = current_day
+        
+        # Cible : 20:55 GMT+0
+        target_hour = 20
+        target_minute = 55
+        target_time = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        
+        # Calcul du temps jusqu'à la cible
+        time_diff = (target_time - now).total_seconds()
+        
+        # Définir les seuils d'alerte
+        alerts = {
+            300: "🔔 **OVERNIGHT HEDGE dans 5 MIN**\n" +
+                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                 "⏰ Exécution prévue à **20:55 GMT+0**\n" +
+                 "🥇 **3 dominants + 2 hedges GOLD**\n" +
+                 "📊 Stratégie: Overnight Hedge Gap\n" +
+                 "💡 Basé sur EMA H1 (tendance du jour)\n" +
+                 "🎯 TP: 4×ATR | SL: 1.5×ATR\n" +
+                 "🛡️ Hedges: TP: 0.5×ATR | SL: 0.3×ATR\n" +
+                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            
+            60: "⏳ **OVERNIGHT HEDGE dans 1 MIN**\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                "⚡ Exécution IMMÉDIATE\n" +
+                "🌙 Marché: XAUUSD (Or)\n" +
+                "📍 Heure précise: 20:55:00 GMT+0\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            
+            30: "⏱️ **OVERNIGHT HEDGE dans 30 SEC**\n" +
+                "🚀 Préparez-vous ! C'est maintenant !",
+            
+            10: "⚡ **OVERNIGHT HEDGE dans 10 SEC**\n" +
+                "🔥 MAINTENANT !",
+            
+            0: "✅ **OVERNIGHT HEDGE EXÉCUTÉ**\n" +
+               "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+               "🌙 **3 BUY / 3 SELL GOLD PLACÉS**\n" +
+               "⚡ Positions actives sur le marché\n" +
+               "🎯 En attente de TP/SL\n" +
+               "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        }
+        
+        # Déterminer si on doit envoyer une alerte
+        for threshold, message in alerts.items():
+            if -5 <= time_diff <= threshold + 5:  # Fenêtre de ±5s
+                if threshold not in self.overnight_alerts_sent:
+                    await self.send_all(message)
+                    self.overnight_alerts_sent.add(threshold)
+                    print(f"[OVERNIGHT] ✅ Alerte {threshold}s envoyée")
+
     async def run(self):
         print("\n" + "═"*40)
         print("  🛰️  SENTINEL NOTIFIER PRO V11.4")
@@ -146,6 +212,9 @@ class GlobalMonitor:
                 f.write(str(time.time()))
 
         while True:
+            # V7.22 — Check OVERNIGHT HEDGE countdown
+            await self.check_overnight_hedge_countdown()
+            
             data = self.read_status()
             if data:
                 current_balance = data.get('balance', 0)
