@@ -12,16 +12,22 @@ def log(msg):
     except: pass
 
 log("Learning Engine Scheduler démarré")
-# Exécution immédiate au démarrage
+# Exécution immédiate au démarrage pour corriger les erreurs d'aujourd'hui
 try:
     subprocess.run([PYTHON, SCRIPT], check=True)
 except Exception as e:
     log(f"Erreur Learning Engine (init): {e}")
 
 while True:
-    time.sleep(43200) # 12 heures
+    # Attendre minuit
+    now = datetime.datetime.now()
+    tomorrow = now.replace(hour=0, minute=1, second=0, microsecond=0) + datetime.timedelta(days=1)
+    wait_time = (tomorrow - now).total_seconds()
+    log(f"Prochaine réévaluation dans {int(wait_time/3600)}h")
+    time.sleep(wait_time)
+    
     try:
         subprocess.run([PYTHON, SCRIPT], check=True)
-        log("Cycle d'apprentissage terminé avec succès")
+        log("Cycle d'apprentissage de minuit terminé avec succès")
     except Exception as e:
         log(f"Erreur Learning Engine: {e}")

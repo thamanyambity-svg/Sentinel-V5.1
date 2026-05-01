@@ -116,8 +116,8 @@ input int    MinConfluenceScore     = 1;
 
 input group "=== ML & SIMULATION ==="
 input bool   SimulationMode         = false;
-input bool   EnableMLFilter         = true;
-input double ML_MinConfidence       = 0.65;
+input bool   EnableMLFilter         = true;  // V7.25+: Veto IA obligatoire
+input double ML_MinConfidence       = 0.75;  // V7.25+: Exigence Sniper (0.75 = 75%)
 
 input group "=== TRAILING STOP ==="
 input bool   EnableTrailingStop     = true;
@@ -1509,7 +1509,10 @@ bool IsMLSignalOK(string symbol, int direction) {
 
     string search = "\"sym\":\"" + symbol + "\"";
     int pos = StringFind(content, search);
-    if(pos < 0) return true;
+    if(pos < 0) {
+        Log.Debug("ML", "Symbole " + symbol + " non trouve dans ml_signal.json - Trade BLOCKED (Sniper Security)");
+        return false;
+    }
 
     int sig_pos = StringFind(content, "\"signal\":", pos);
     if(sig_pos < 0) return true;
@@ -2204,18 +2207,21 @@ void ExportTradeHistory_V7() {
             }
         }
 
-        // Fallback indicateurs courants
-        if(entryRSI == 50.0) {
-            for(int s = 0; s < symbolCount; s++) {
-                if(symbols[s].symbol == sym && symbols[s].lastRSI != 0.0) {
-                    entryRSI    = symbols[s].lastRSI;
-                    entryADX    = symbols[s].lastADX;
-                    entryATR    = symbols[s].lastATR;
-                    entrySpread = SymbolInfoInteger(sym, SYMBOL_SPREAD);
-                    entryRegime = symbols[s].superTrendDir;
-                    break;
-                }
+        // Fallback INTELLIGENT : On essaie de lire les infos dans le commentaire du trade
+        string comment = HistoryDealGetString(t, DEAL_COMMENT);
+        if(StringFind(comment, "V7[") >= 0) {
+            int start = StringFind(comment, "[") + 1;
+            int pipe  = StringFind(comment, "|", start);
+            int end   = StringFind(comment, "]", pipe);
+            if(pipe > start && end > pipe) {
+                entryConfluence = StringToDouble(StringSubstr(comment, start, pipe - start));
+                entryRSI        = StringToDouble(StringSubstr(comment, pipe + 1, end - pipe - 1));
             }
+        }
+        
+        // Si vraiment rien n'est trouvé, on ne ment pas : on met 0 au lieu des valeurs LIVE
+        if(entryRSI == 50.0) {
+            entryRSI = 0; entryADX = 0; entryConfluence = 0;
         }
 
         j += "{\"ticket\":"       + (string)posID +

@@ -972,13 +972,16 @@ function updateSniperBoard(trades) {
     const pnl = parseFloat(t.pnl || 0);
     const time = new Date(t.time_open * 1000).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
     
-    // Construction du raisonnement basé sur les indicateurs exportés
-    let reason = `<span style="color:var(--accent2)">IA ${Math.round((t.confluence||0)*100)}%</span> | `;
-    reason += `RSI ${parseFloat(t.rsi).toFixed(0)} `;
-    reason += t.rsi > 70 ? '(Surchauffe)' : t.rsi < 30 ? '(Sursollicité)' : '';
-    reason += ` | ADX ${parseFloat(t.adx).toFixed(0)}`;
-    if(t.regime === 1) reason += ' | <span style="color:var(--accent)">Tendance ↑</span>';
-    if(t.regime === -1) reason += ' | <span style="color:var(--danger)">Tendance ↓</span>';
+    // Construction du raisonnement basé sur les données RÉELLES enregistrées pour ce trade
+    const t_ia = Math.round((t.confluence || 0) * 100);
+    const t_rsi = parseFloat(t.rsi || 0).toFixed(0);
+    const t_adx = parseFloat(t.adx || 0).toFixed(0);
+    const t_reg = parseInt(t.regime || 0);
+
+    let reason = `<span style="color:${t_ia >= 70 ? 'var(--accent)' : 'var(--danger)'}">IA ${t_ia}%</span> | `;
+    reason += `RSI ${t_rsi} | ADX ${t_adx}`;
+    if(t_reg === 1)  reason += ' | <span style="color:var(--accent)">Tendance ↑</span>';
+    if(t_reg === -1) reason += ' | <span style="color:var(--danger)">Tendance ↓</span>';
 
     // Calcul durée
     const durSec = parseInt(t.duration || 0);
