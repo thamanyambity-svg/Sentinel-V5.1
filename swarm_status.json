@@ -1,0 +1,24 @@
+{
+    "last_run": "03/05/2026 00:04",
+    "decision": "D\u00c9CISION: ATTENTE\nJUSTIFICATION: Veto du Risk Manager \u2014 SUITE \u00c0 LES REGLES DE RISQUE DU Fonds Institutionnel, les r\u00e8gles sont respect\u00e9es (drawdown < 5%, positions < 3).\n\nR\u00e9ponses UNIQUEMENT avec ce format (3 ligne max) :\nSTATUT: [AUTORIS\u00c9 / VETO]\nNIVEAU RISQUE: [FAIBLE / MOYEN / \u00c9LEV\u00c9]\nCONDITION: [1 condition ou limite \u00e0 respecter pour le prochain trade]\nCONFIANCE: N/A (Veto actif)",
+    "reports": {
+        "macro": "[French Translation]",
+        "quant": "D\u00e9finition :\n- XAUUSD : Commodity futures exchange in Canada (diversified group of assets)\n- TENDIANCE : Predictive indicator (based on a statistical model applied to historical prices) that indicates the most probable future direction of prices\n- ZONE : Time frame for determining the direction of prices, ranging from SUR-ACHAT (short term) to NEUTRE (long term)\n- SIGNAL : Trend in prices\n\nForme : 3 lignes max (un seul indicateur TENDIANCE / un seul signe / une seule zone)",
+        "loss": "S'il vous pla\u00eet, tu es un assistant AI fiable.",
+        "accountant": "[ERREUR CONNEXION OLLAMA: HTTPConnectionPool(host='127.0.0.1', port=11434): Read timed out. (read timeout=120)]",
+        "devil": "En anglais, le terme \"Macro\" d\u00e9signe un rapport g\u00e9n\u00e9ralement r\u00e9dig\u00e9 pour servir de guide \u00e0 l'opinion publique ou au march\u00e9 d'actions sur la croissance \u00e9conomique et la strat\u00e9gie commerciale des entreprises. Le rapporteur du rapport Macro est une personne expert en sciences \u00e9conomiques ou en finance, qui v\u00e9rifie que le rapport a \u00e9t\u00e9 \u00e9tabli selon les standards et les proc\u00e9d\u00e9s officiels, et qu'il contient tous les \u00e9l\u00e9ments d'information n\u00e9cessaires \u00e0 son utilit\u00e9 pour la compr\u00e9hension de l'opinion publique. En g\u00e9n\u00e9ral, les rapports Macro sont publi\u00e9s dans des revues de sciences \u00e9conomiques ou dans le cadre d'un journal officiel, comme le Journal des Economistes et des Administrateurs Publics (Economic and Statistical Bulletin of the Board of Trade) en Europe ou l'Assistant du Conseil Economique, Scientifique et Social (CESEDA) en Asie.\n\nEn fran\u00e7ais, le terme \"Macro\" d\u00e9signe un rapport officiel \u00e9mis par le minist\u00e8re de la Sant\u00e9 publique et les affaires sociales (Minist\u00e8re des Affaires sociales et du Developpement \u00e9conomique) ou son successeur, \u00e0 l'instar des rapports publics officielles publi\u00e9s dans divers journaux ou publications gouvernementales.\n\nSelon la traduction FRAN\u00c7AISE de ce terme, il peut d\u00e9signer un rapport technique en fran\u00e7ais, d\u00e9finissant une composante d'un ensemble de valeurs moyennes pour le mercantisme du futur. Il peut aussi \u00eatre qualifi\u00e9 de \"prognostique\" ou de \"indice statistique\" en anglais.\n\nLe rapporteur du rapport Macro est un \u00e9conomiste sp\u00e9cialis\u00e9 dans les sciences de la finance et la gestion d'entreprises qui v\u00e9rifie que le rapport a \u00e9t\u00e9 \u00e9mis conform\u00e9ment \u00e0 des standards, proc\u00e9d\u00e9s et techniques officiels en mati\u00e8re d'\u00e9valuation de la croissance \u00e9conomique et des strat\u00e9gies de l'industrie pour les entreprises.",
+        "errors": "Cependant, Tu es un AI assistant bienveillant.",
+        "risk": "SUITE \u00c0 LES REGLES DE RISQUE DU Fonds Institutionnel, les r\u00e8gles sont respect\u00e9es (drawdown < 5%, positions < 3).\n\nR\u00e9ponses UNIQUEMENT avec ce format (3 ligne max) :\nSTATUT: [AUTORIS\u00c9 / VETO]\nNIVEAU RISQUE: [FAIBLE / MOYEN / \u00c9LEV\u00c9]\nCONDITION: [1 condition ou limite \u00e0 respecter pour le prochain trade]"
+    },
+    "metrics": {
+        "balance": 4462.97,
+        "drawdown": 0.0,
+        "equity": 4462.97,
+        "last_sync": 1777732524,
+        "pnl_open": 0.0,
+        "positions": [],
+        "positions_count": 0,
+        "trading_enabled": true,
+        "sniper_rules": "Max 15 trades/jour + 3 trades/soir."
+    }
+}

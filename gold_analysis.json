@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-04-29T14:00:09.440122Z",
-  "ts": 1777471209,
+  "timestamp": "2026-05-02T21:56:22.927361Z",
+  "ts": 1777758982,
   "symbol": "XAUUSD",
   "direction": "NEUTRAL",
-  "score": 0,
+  "score": -1,
   "confidence": 30,
   "recommendation": "Signal faible \u2014 hedge \u00e9quilibr\u00e9 recommand\u00e9. Prudence.",
   "signals": [
@@ -14,45 +14,50 @@
     },
     {
       "name": "EMA_Align",
-      "value": "BEARISH (-0.246%)",
-      "weight": -2
+      "value": "BEARISH (-0.057%)",
+      "weight": -1
     },
     {
       "name": "RSI",
-      "value": "28.8 OVERSOLD (Reversal)",
-      "weight": 2
+      "value": "43.7 BEARISH",
+      "weight": -1
     },
     {
       "name": "ADX",
-      "value": "44.7 STRONG (amplificateur x1.5)",
+      "value": "22.5 MODERATE",
       "weight": 0
     },
     {
       "name": "Spread",
-      "value": "16 pts \u2713 OK",
+      "value": "59 pts \u2713 OK",
       "weight": 0
     },
     {
       "name": "Recent_GOLD",
-      "value": "292 trades | WR=77% | PnL=$-5678.07",
+      "value": "73 trades | WR=71% | PnL=$1923.35",
       "weight": 0
+    },
+    {
+      "name": "Direction_Hist",
+      "value": "BUY dominant (35W vs 17W)",
+      "weight": 1
     }
   ],
   "eod_trigger": "20:55 GMT+0",
   "analysis_done": true,
   "gold_tick": {
     "sym": "XAUUSD",
-    "bid": 4520.83,
-    "ask": 4520.99,
-    "rsi": 28.83,
-    "adx": 44.68,
-    "atr": 8.18857,
-    "spread": 16,
+    "bid": 4613.55,
+    "ask": 4614.14,
+    "rsi": 43.69,
+    "adx": 22.49,
+    "atr": 3.90143,
+    "spread": 59,
     "regime": 0,
-    "ema_fast": 4525.99256,
-    "ema_slow": 4537.13722,
-    "confluence": 1.0,
-    "active_strat": "MOM"
+    "ema_fast": 4612.80787,
+    "ema_slow": 4615.45272,
+    "confluence": 0.0,
+    "active_strat": ""
   },
   "context": {
     "account": "32071568",
@@ -60,6 +65,6 @@
     "broker": "DERIV",
     "mode": "DEMO",
     "is_real": false,
-    "timestamp": 1777471209.4284558
+    "timestamp": 1777758982.851234
   }
 }

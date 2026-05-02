@@ -55,8 +55,8 @@ except ImportError:
 #  CONFIGURATION FLASK
 # ══════════════════════════════════════════════════════════════════
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 app.config['JSON_SORT_KEYS'] = False
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
@@ -268,7 +268,7 @@ def broadcast_live_ticks():
             time.sleep(5)
 
 import threading
-threading.Thread(target=broadcast_live_ticks, daemon=True).start()
+# Thread is started in the main block
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -569,12 +569,8 @@ def risk_cockpit():
 
 @app.route('/', methods=['GET'])
 def index():
-    """Serve the unified command portal"""
-    portal_path = Path(__file__).parent / "unified_portal.html"
-    if portal_path.exists():
-        with open(portal_path, 'r', encoding='utf-8') as f:
-            return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
-    return "Portal file not found", 404
+    """Serve the modern BlackRock Dashboard"""
+    return render_template('dashboard.html')
 
 
 @socketio.on('connect')
@@ -654,6 +650,19 @@ def get_journal_v1():
     except Exception as e:
         return jsonify([f"[ERROR] {str(e)}"]), 500
 
+@app.route('/api/v1/swarm/status', methods=['GET'])
+@cross_origin()
+def get_swarm_status():
+    """Retourne les rapports de l'essaim d'agents."""
+    try:
+        import os, json
+        if os.path.exists('swarm_status.json'):
+            with open('swarm_status.json', 'r') as f:
+                return json.load(f), 200
+        return {"status": "waiting"}, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+
 @app.route('/api/v2/stats')
 @cross_origin()
 def get_stats_v2():
@@ -720,5 +729,9 @@ if __name__ == "__main__":
     print("\n" + Colors.cyan("=" * 60))
     print(Colors.bold(Colors.cyan(" SENTINEL COMMAND CENTER - LIVE ENGINE ")))
     print(Colors.cyan("=" * 60))
+    
+    # Start background threads
+    import threading
+    threading.Thread(target=broadcast_live_ticks, daemon=True).start()
     
     socketio.run(app, host="0.0.0.0", port=5000, debug=False, allow_unsafe_werkzeug=True)

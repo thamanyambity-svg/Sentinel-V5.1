@@ -116,8 +116,16 @@ input int    MinConfluenceScore     = 1;
 
 input group "=== ML & SIMULATION ==="
 input bool   SimulationMode         = false;
+<<<<<<< ours
 input bool   EnableMLFilter         = true;  // V7.25+: Veto IA obligatoire
 input double ML_MinConfidence       = 0.75;  // V7.25+: Exigence Sniper (0.75 = 75%)
+=======
+input bool   EnableMLFilter         = true;
+input double ML_MinConfidence       = 0.75;  // V7.25 Sniper: veto IA durci à 75%
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 
 input group "=== TRAILING STOP ==="
 input bool   EnableTrailingStop     = true;

@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Aonoseke Bot Trading V7.22</title>
+<title>Aonoseke Bot Trading V7.25 Elite</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -224,7 +224,7 @@ body { -webkit-text-size-adjust: 100%; }
   <div class="header-brand">
     <img src="/static/alpha_logo.jpg" class="logo-img" alt="AONOSEKE LOGO">
     <div class="brand-text">
-      <div class="logo-main">AONOSEKE BOT TRADING <span class="vtag">V7.22</span></div>
+      <div class="logo-main">AONOSEKE BOT TRADING <span class="vtag">V7.25 ELITE</span></div>
       <div class="logo-sub">BY AONOSEKE HOUSE INVESTMENT DRC 2026</div>
     </div>
   </div>
@@ -270,7 +270,7 @@ body { -webkit-text-size-adjust: 100%; }
 <!-- ══ TABLEAU D'ÉVALUATION SNIPER (Audit 15 Trades) ══ -->
 <div class="panel" style="margin-bottom:16px; border-top: 3px solid var(--accent);">
   <div class="ph">
-    <span class="pt" style="font-size:12px; color:var(--text); font-weight:700;">🎯 TABLEAU D'ÉVALUATION SNIPER (Audit des 15 Trades du Jour)</span>
+    <span class="pt" style="font-size:12px; color:var(--text); font-weight:700;">🎯 TABLEAU D'ÉVALUATION SNIPER (Logique 15 Jour / 3 Soir)</span>
     <span id="sniper-count" style="font-size:10px; color:var(--muted); font-family:var(--mono)">0 / 15 Opportunités</span>
   </div>
   <div id="sniper-board-body">
@@ -278,9 +278,31 @@ body { -webkit-text-size-adjust: 100%; }
   </div>
 </div>
 
+<!-- ══ BLACKROCK SWARM — ÉQUIPE D'AGENTS IA ══ -->
+<div class="panel" style="margin-bottom:16px; border-top: 3px solid var(--accent2); background: linear-gradient(to bottom, #0f172a, #080b10);">
+  <div class="ph">
+    <span class="pt" style="font-size:12px; color:var(--accent2); font-weight:700;">🏦 BLACKROCK SWARM — COMITÉ D'INVESTISSEMENT (8 AGENTS)</span>
+    <span id="swarm-last-run" style="font-size:10px; color:var(--muted); font-family:var(--mono)">Dernière analyse: --:--</span>
+  </div>
+  <div class="pb" style="padding: 15px;">
+    <div id="swarm-cio-decision" style="margin-bottom: 20px; padding: 15px; background: rgba(61, 127, 255, 0.1); border: 1px solid var(--accent2); border-radius: 8px; text-align: center;">
+        <div style="font-family: var(--mono); font-size: 10px; color: var(--accent2); text-transform: uppercase; margin-bottom: 5px;">Verdict Final du CIO</div>
+        <div id="cio-verdict-text" style="font-size: 22px; font-weight: 800; font-family: var(--mono); color: var(--text);">EN DÉLIBÉRATION...</div>
+        <div id="cio-justification" style="font-size: 12px; color: var(--muted); margin-top: 5px; font-style: italic;">En attente du cycle d'analyse...</div>
+    </div>
+    
+    <div id="swarm-agents-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <!-- Les cartes des agents seront injectées ici -->
+        <div class="empty" style="grid-column: 1/-1;">Initialisation de l'équipe...</div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ SESSIONS DE MARCHÉ ══ -->
 <div class="ph"><span class="pt" style="font-size:12px">Ouverture des Marchés Mondiaux</span></div>
 <div id="sessions-bar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px;"></div>
+<div class="ph"><span class="pt" style="font-size:12px">Statut des Bots Stratégiques</span></div>
+<div id="bot-sessions-bar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px;"></div>
 
 <!-- ══ FILTRES GLOBAUX ══ -->
 <div class="panel" style="margin-bottom:16px; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; background:var(--surface2);">
@@ -1004,13 +1026,67 @@ function updateSniperBoard(trades) {
 document.getElementById('period-filter').addEventListener('change',()=> { loadStats(); loadTrades(); });
 document.getElementById('sym-filter').addEventListener('change',()=> { loadStats(); loadTrades(); });
 
+async function loadSwarmStatus() {
+  try {
+    const r = await fetch('/api/v1/swarm/status');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || d.status === 'waiting') return;
+
+    document.getElementById('swarm-last-run').textContent = `Dernière analyse: ${d.last_run}`;
+    
+    // Décision du CIO
+    const cio = d.decision || "";
+    const cioEl = document.getElementById('cio-verdict-text');
+    const justEl = document.getElementById('cio-justification');
+    
+    if (cio.includes('ACHAT')) {
+        cioEl.textContent = "ACHAT CONSEILLÉ";
+        cioEl.style.color = "var(--accent)";
+    } else if (cio.includes('VENTE')) {
+        cioEl.textContent = "VENTE CONSEILLÉE";
+        cioEl.style.color = "var(--danger)";
+    } else {
+        cioEl.textContent = "ATTENTE / NEUTRE";
+        cioEl.style.color = "var(--text)";
+    }
+    
+    // Extraire la justification du texte (DÉCISION: ... JUSTIFICATION: ... CONFIANCE: ...)
+    const justMatch = cio.match(/JUSTIFICATION:\s*([^\n]+)/);
+    justEl.textContent = justMatch ? justMatch[1] : "Analyse complète effectuée.";
+
+    // Grille des agents
+    const reports = d.reports || {};
+    let gridHtml = '';
+    const agentIcons = {
+        macro: '🌍', quant: '📊', loss: '📉', accountant: '🧾',
+        devil: '😈', errors: '🔍', risk: '🛡️'
+    };
+    const agentNames = {
+        macro: 'Macro-Économiste', quant: 'Analyste Quant', loss: 'Analyste Pertes', accountant: 'Comptable',
+        devil: 'Avocat du Diable', errors: 'Audit Erreurs', risk: 'Risk Manager'
+    };
+
+    for (const [key, report] of Object.entries(reports)) {
+        if (!agentIcons[key]) continue;
+        gridHtml += `
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+            <div style="font-size: 11px; color: var(--accent2); font-family: var(--mono); margin-bottom: 5px;">${agentIcons[key]} ${agentNames[key]}</div>
+            <div style="font-size: 10px; line-height: 1.4; color: var(--text);">${report.substring(0, 200)}...</div>
+          </div>`;
+    }
+    document.getElementById('swarm-agents-grid').innerHTML = gridHtml;
+
+  } catch(e) { console.error("Error loadSwarmStatus", e); }
+}
+
 async function refresh() {
-  await Promise.all([loadStatus(), loadTicks(), loadStats(), loadTrades(), loadGoldAnalysis(), loadSentiment(), loadLearningState()]);
+  await Promise.all([loadStatus(), loadTicks(), loadStats(), loadTrades(), loadGoldAnalysis(), loadSentiment(), loadLearningState(), loadSwarmStatus()]);
 }
 
 // Tickers rapides (pas de fetch)
 setInterval(()=>{updateEODCountdown();renderSessions()}, 1000);
-setInterval(refresh, 3000);
+setInterval(refresh, 10000); // 10s pour alléger le CPU
 renderSessions();
 updateEODCountdown();
 refresh();

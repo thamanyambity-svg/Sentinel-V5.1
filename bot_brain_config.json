@@ -1,0 +1,7 @@
+{
+    "min_ia_confidence": 0.85,
+    "adx_threshold": 35,
+    "rsi_extreme_buy": 30,
+    "rsi_extreme_sell": 70,
+    "last_update": "2026-05-01 15:17:05.012481"
+}

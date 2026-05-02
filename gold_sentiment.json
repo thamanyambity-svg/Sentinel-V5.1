@@ -1,15 +1,15 @@
 {
-    "timestamp": "2026-04-29T16:31:48.035857",
+    "timestamp": "2026-05-02T13:07:11.979577",
     "headlines": [
-        "Robinhood Q1 Earnings Miss, Crypto Slump Drags Shares Lower",
-        "investingLive Americas FX news wrap: Dovish BoJ's Ueda, ECB inflation expectations surge",
-        "investingLive Americas market news: UAE leaves OPEC, Trump says Iran wants to open Strait",
-        "investingLive Asia-Pacific FX news wrap: Trump says prepare 4 extended indefinite blockade",
-        "ADP weekly NER Pulse 39,250 vs 54,750 expected"
+        "Fed dissenters push back on easing bias as geopolitical risk scrambles the outlook",
+        "Assessing Seabridge Gold (TSX:SEA) Valuation After Mixed Recent Returns And A Premium Price To Book Ratio",
+        "Agnico Eagle, Eldorado Gold post Q1 earnings beat with capital returns a standout",
+        "Hawkish FOMC Pressures Gold; Buyers Defend $4,500 Support",
+        "Pakistani officials say they expect new Iran proposal this week - report"
     ],
     "analysis": {
-        "bias": "BULLISH",
-        "score": 5,
-        "summary": "Current geopolitical tensions and potential inflationary pressures are likely to support demand for gold as a safe haven asset."
+        "bias": "BEARISH",
+        "score": -7,
+        "summary": "The combination of hawkish Federal Reserve sentiment and rising geopolitical tensions creates a complex environment that pressures gold prices."
     }
 }
