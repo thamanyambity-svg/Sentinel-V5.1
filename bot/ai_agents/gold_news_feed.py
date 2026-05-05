@@ -143,4 +143,15 @@ class GoldNewsAgent:
 
 if __name__ == "__main__":
     agent = GoldNewsAgent()
-    agent.run()
+    # On change le nom pour matcher l'API
+    agent.output_file = "sentiment_analysis.json"
+    
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Fundamental Intelligence Daemon started (30m interval)")
+    while True:
+        try:
+            agent.run()
+        except Exception as e:
+            print(f"Error in daemon: {e}")
+        
+        # Sleep 30 minutes
+        time.sleep(1800)

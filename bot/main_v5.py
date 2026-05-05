@@ -379,13 +379,17 @@ async def run_bot():
                             continue
 
                         # --- RISK & REGIME GATE ---
-                        vol_candles = m5_bars.get(asset, [])
-                        if not vol_candles:
-                            logger.warning(f"⚠️ {asset}: No candles for ATR check")
-                            continue
-                            
-                        current_atr_pips = get_atr_sl_pips(vol_candles, point=point)
+                        atr_val = analysis.get("atr", 0)
                         
+                        if atr_val > 0:
+                            current_atr_pips = int(round(atr_val / point))
+                        else:
+                            vol_candles = m5_bars.get(asset, [])
+                            if not vol_candles:
+                                logger.warning(f"⚠️ {asset}: No ATR in ticks and no candles for ATR check")
+                                continue
+                            current_atr_pips = get_atr_sl_pips(vol_candles, point=point)
+                            
                         # Maintain ATR History for Regime Detection
                         if asset not in atr_history:
                             atr_history[asset] = deque(maxlen=100)

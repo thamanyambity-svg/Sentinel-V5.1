@@ -129,8 +129,28 @@ def cache_response(ttl: int = 5):
 
 
 # ══════════════════════════════════════════════════════════════════
-#  HELPERS
+#  HELPERS DATA
 # ══════════════════════════════════════════════════════════════════
+
+def load_status():
+    """Charge les données MT5 depuis status.json"""
+    try:
+        if os.path.exists('status.json'):
+            with open('status.json', 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Erreur load_status: {e}")
+    return {}
+
+def load_swarm_status():
+    """Charge les données de l'essaim depuis swarm_status.json"""
+    try:
+        if os.path.exists('swarm_status.json'):
+            with open('swarm_status.json', 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Erreur load_swarm_status: {e}")
+    return {}
 
 def format_account_data(status: Dict[str, Any]) -> Dict[str, Any]:
     """Formate les données de compte"""
@@ -569,8 +589,13 @@ def risk_cockpit():
 
 @app.route('/', methods=['GET'])
 def index():
-    """Serve the modern BlackRock Dashboard"""
-    return render_template('dashboard.html')
+    """Serve the modern BlackRock Dashboard V7.0 Sovereign"""
+    # Use the unified portal as the primary interface
+    try:
+        with open('unified_portal.html', 'r', encoding='utf-8') as f:
+            return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
+    except:
+        return render_template('dashboard.html')
 
 
 @socketio.on('connect')
@@ -654,14 +679,43 @@ def get_journal_v1():
 @cross_origin()
 def get_swarm_status():
     """Retourne les rapports de l'essaim d'agents."""
+    return jsonify(load_swarm_status()), 200
+
+@app.route('/api/v1/gold_analysis', methods=['GET'])
+@cross_origin()
+def get_gold_analysis():
+    """Retourne l'analyse Gold EOD"""
     try:
-        import os, json
-        if os.path.exists('swarm_status.json'):
-            with open('swarm_status.json', 'r') as f:
-                return json.load(f), 200
-        return {"status": "waiting"}, 200
+        if os.path.exists('gold_analysis.json'):
+            with open('gold_analysis.json', 'r') as f:
+                return jsonify(json.load(f)), 200
+        return jsonify({"status": "not_available"}), 200
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/v1/learning_state', methods=['GET'])
+@cross_origin()
+def get_learning_state():
+    """Retourne l'état de l'apprentissage adaptatif"""
+    try:
+        if os.path.exists('learning_state.json'):
+            with open('learning_state.json', 'r') as f:
+                return jsonify(json.load(f)), 200
+        return jsonify({"status": "not_available"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/v1/sentiment', methods=['GET'])
+@cross_origin()
+def get_sentiment_v1():
+    """Retourne le sentiment IA"""
+    try:
+        if os.path.exists('sentiment_analysis.json'):
+            with open('sentiment_analysis.json', 'r') as f:
+                return jsonify(json.load(f)), 200
+        return jsonify({"status": "not_available"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/v2/stats')
 @cross_origin()
@@ -697,6 +751,27 @@ def get_stats_v2():
 #  LANCEMENT
 # ══════════════════════════════════════════════════════════════════
 
+@app.route('/api/v1/logs', methods=['GET'])
+@cross_origin()
+def get_logs():
+    """Retourne les dernières lignes des logs de l'essaim"""
+    try:
+        log_path = 'logs/bot_engine.log'
+        if not os.path.exists(log_path):
+            # Fallback pour compatibilité
+            log_path = 'logs/swarm_auto.log'
+            
+        if not os.path.exists(log_path):
+            return jsonify({"logs": ["En attente de synchronisation des agents..."]}), 200
+        
+        with open(log_path, 'r') as f:
+            # Lire les 50 dernières lignes
+            lines = f.readlines()
+            last_lines = lines[-50:] if len(lines) > 50 else lines
+            return jsonify({"logs": last_lines}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/v1/trading_data', methods=['GET'])
 @cross_origin()
 def get_trading_data_unified():
@@ -724,7 +799,7 @@ def get_mobile_iframe():
 
 if __name__ == "__main__":
     # Nettoyage pré-lancement
-    os.system("fuser -k 5000/tcp || true")
+    os.system("fuser -k 5001/tcp || true")
     
     print("\n" + Colors.cyan("=" * 60))
     print(Colors.bold(Colors.cyan(" SENTINEL COMMAND CENTER - LIVE ENGINE ")))
@@ -734,4 +809,4 @@ if __name__ == "__main__":
     import threading
     threading.Thread(target=broadcast_live_ticks, daemon=True).start()
     
-    socketio.run(app, host="0.0.0.0", port=5000, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=5001, debug=False, allow_unsafe_werkzeug=True)

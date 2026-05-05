@@ -152,13 +152,13 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
 .empty{text-align:center;color:var(--muted);padding:28px;font-size:12px}
 
 select{background:var(--surface2);border:1px solid var(--border);color:var(--text);
-  border-radius:4px;padding:3px 8px;font-size:10px;font-family:var(--mono)}
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#0a0f18">
-  <link rel="apple-touch-icon" href="/static/alpha_logo.jpg">
-  <style>
+}
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0a0f18">
+<link rel="apple-touch-icon" href="/static/alpha_logo.jpg">
+<style>
 /* ══ PREMIUM FINTECH MOBILE EXPERIENCE (V7.25) ══ */
 @media (max-width: 600px) {
   :root { --p-gap: 12px; }
@@ -281,7 +281,7 @@ body { -webkit-text-size-adjust: 100%; }
 <!-- ══ BLACKROCK SWARM — ÉQUIPE D'AGENTS IA ══ -->
 <div class="panel" style="margin-bottom:16px; border-top: 3px solid var(--accent2); background: linear-gradient(to bottom, #0f172a, #080b10);">
   <div class="ph">
-    <span class="pt" style="font-size:12px; color:var(--accent2); font-weight:700;">🏦 BLACKROCK SWARM — COMITÉ D'INVESTISSEMENT (8 AGENTS)</span>
+    <span class="pt" style="font-size:12px; color:var(--accent2); font-weight:700;">🏦 BLACKROCK SWARM — COMITÉ D'INVESTISSEMENT (19 AGENTS)</span>
     <span id="swarm-last-run" style="font-size:10px; color:var(--muted); font-family:var(--mono)">Dernière analyse: --:--</span>
   </div>
   <div class="pb" style="padding: 15px;">
@@ -438,6 +438,17 @@ body { -webkit-text-size-adjust: 100%; }
       </div>
     </div>
     
+  </div>
+</div>
+
+<!-- ══ TERMINAL LIVE LOGS ══ -->
+<div class="panel" style="margin-bottom:32px; border-top: 3px solid var(--muted); background: #000;">
+  <div class="ph" style="background: #0a0a0a;">
+    <span class="pt" style="color: #0f0; font-family: var(--mono);">SYSTEM MONITOR — LIVE LOGS</span>
+    <span style="font-size:9px; color: #080; font-family: var(--mono);">STREAMING_ACTIVE</span>
+  </div>
+  <div id="log-terminal" style="height: 300px; padding: 15px; overflow-y: auto; font-family: var(--mono); font-size: 11px; color: #0f0; line-height: 1.5; background: #000;">
+    <div style="color: #080;">[SYSTEM] Initialisation de la console de monitoring...</div>
   </div>
 </div>
 
@@ -624,7 +635,7 @@ function updateEODCountdown() {
 // ══ GOLD ANALYSIS ════════════════════════════════════════════
 async function loadGoldAnalysis() {
   try {
-    const r = await fetch('/api/gold_analysis');
+    const r = await fetch('/api/v1/gold_analysis');
     if (!r.ok) return;
     const d = await r.json();
     if (!d || d.status === 'not_available') return;
@@ -656,7 +667,7 @@ async function loadGoldAnalysis() {
 // ══ APPRENTISSAGE ADAPTATIF ══════════════════════════════════
 async function loadLearningState() {
   try {
-    const r = await fetch('/api/learning_state');
+    const r = await fetch('/api/v1/learning_state');
     if (!r.ok) return;
     const d = await r.json();
     if (!d || !d.version) {
@@ -748,56 +759,58 @@ function buildChart(curve) {
 // ══ STATUS ════════════════════════════════════════════════════
 async function loadStatus() {
   try {
-    const d = await fetch('/api/status').then(r=>r.json());
-    const bal=parseFloat(d.balance||0), eq=parseFloat(d.equity||0), diff=eq-bal;
-    setText('k-bal', fmtUSD(bal));
-    setText('k-eq',  fmtUSD(eq));
-    set('k-eqdiff', `<span class="${cc(diff)}">${fmt(diff)} USD</span>`);
+    const resp = await fetch('/api/v1/account').then(r=>r.json());
+    const d = resp.data || {};
     
-    // Gestion du contexte dynamique
-    const ctx = d.context || {};
-    const badge = document.getElementById('account-badge');
-    if (ctx.broker) {
-      badge.textContent = `${ctx.broker} ${ctx.mode} · ${ctx.account}`;
-      badge.style.color = ctx.mode === 'REAL' ? 'var(--gold)' : 'var(--accent2)';
-      badge.style.borderColor = ctx.mode === 'REAL' ? 'var(--gold)' : 'var(--accent2)';
-      set('k-acc', `${ctx.broker} ${ctx.mode} · Compte ${ctx.account}`);
-    } else {
-      set('k-acc', 'Compte '+d.account+' · '+d.server);
+    // Mise à jour de la balance et equity (Priorité)
+    try {
+        const bal=parseFloat(d.balance||0), eq=parseFloat(d.equity||0), diff=eq-bal;
+        setText('k-bal', fmtUSD(bal));
+        setText('k-eq',  fmtUSD(eq));
+        set('k-eqdiff', `<span class="${cc(diff)}">${fmt(diff)} USD</span>`);
+        set('k-today', `${d.trades_today||0} trades aujourd'hui`);
+        
+        const badge = document.getElementById('account-badge');
+        const ctx = d.context || {};
+        if (ctx.broker) {
+          badge.textContent = `${ctx.broker} ${ctx.mode} · ${ctx.account}`;
+          set('k-acc', `${ctx.broker} ${ctx.mode} · Compte ${ctx.account}`);
+        } else {
+          badge.textContent = (d.account||'---');
+          set('k-acc', 'Compte '+(d.account||'---')+' · '+(d.server||'---'));
+        }
+    } catch(e) { console.error("Err KPI:", e); }
+
+    // Statut Synchronisation
+    if (d.last_sync) {
+      const syncDate = new Date(d.last_sync * 1000);
+      document.getElementById('last-sync').textContent = `Sync: ${syncDate.toLocaleTimeString('fr-FR')}`;
     }
 
-    set('k-today', `${d.trades_today||0} trades aujourd'hui`);
-    
-    // Affichage de la dernière synchro MT5
-    if (d.ts) {
-      const syncDate = new Date(d.ts * 1000);
-      document.getElementById('last-sync').textContent = `MT5 Sync: ${syncDate.toLocaleTimeString('fr-FR')}`;
-      if (Date.now()/1000 - d.ts > 60) document.getElementById('last-sync').style.color = 'var(--danger)';
-      else document.getElementById('last-sync').style.color = 'var(--muted)';
-    }
-
+    // Dot Status (LIVE/STOPPED)
     const dot=document.getElementById('sdot'),lbl=document.getElementById('slabel');
     if(d.strategy_paused){dot.className='dot paused';lbl.textContent='PAUSED'}
-    else if(!d.trading){dot.className='dot off';lbl.textContent='STOPPED'}
-    else{dot.className='dot live';lbl.textContent='LIVE · '+d.server}
+    else if(!d.trading_enabled){dot.className='dot off';lbl.textContent='STOPPED'}
+    else{dot.className='dot live';lbl.textContent='LIVE · ACTIVE'}
+    
     document.getElementById('htime').textContent='UTC '+new Date().toUTCString().slice(17,25)+' · '+new Date().toLocaleTimeString('fr-FR');
 
-    const pos=d.positions||[];
-    set('pos-count', pos.length+' position'+(pos.length>1?'s':''));
-    if(!pos.length){set('pos-body','<div class="empty">Aucune position ouverte</div>');return}
-    let h='<table><thead><tr><th>Sym</th><th>Type</th><th>Lot</th><th>Prix</th><th>S.L. (Trail)</th><th>P&L</th><th>Action</th></tr></thead><tbody>';
-    pos.forEach(p=>{const pnl=parseFloat(p.pnl||0);
-      const isGold = p.sym.includes('XAU') || p.sym.includes('GOLD');
-      const dec = isGold ? 2 : (p.sym.includes('100') ? 2 : 5);
-      h+=`<tr><td style="font-family:var(--mono);font-weight:700">${p.sym}</td>
-          <td><span class="badge badge-${p.type.toLowerCase()}">${p.type}</span></td>
-          <td>${parseFloat(p.lot).toFixed(2)}</td>
-          <td style="font-family:var(--mono);font-size:11px">${parseFloat(p.price).toFixed(dec)}</td>
-          <td style="font-family:var(--mono);font-size:11px;color:var(--warn)">${parseFloat(p.sl||0).toFixed(dec)}</td>
-          <td class="${cc(pnl)}" style="font-family:var(--mono)">${fmt(pnl)} $</td>
-          <td><button class="btn-close" onclick="executeClose(${p.ticket})">CLOSE</button></td></tr>`});
-    set('pos-body',h+'</tbody></table>');
-  } catch(e){}
+    // Positions
+    try {
+        const pos=d.positions||[];
+        set('pos-count', pos.length+' position'+(pos.length>1?'s':''));
+        if(!pos.length){set('pos-body','<div class="empty">Aucune position ouverte</div>');}
+        else {
+            let h='<table><thead><tr><th>Sym</th><th>Type</th><th>Lot</th><th>Prix</th><th>S.L.</th><th>P&L</th></tr></thead><tbody>';
+            pos.forEach(p=>{
+              const pnl=parseFloat(p.pnl||0);
+              h+=`<tr><td>${p.sym}</td><td>${p.type}</td><td>${p.lot}</td><td>${p.price}</td><td>${p.sl||0}</td><td class="${cc(pnl)}">${fmt(pnl)} $</td></tr>`
+            });
+            set('pos-body',h+'</tbody></table>');
+        }
+    } catch(e) { console.error("Err Pos:", e); }
+    
+  } catch(e){ console.error("Err Global Status:", e); }
 }
 
 async function executeClose(ticket) {
@@ -817,7 +830,7 @@ async function executeClose(ticket) {
 // ══ TICKS ════════════════════════════════════════════════════
 async function loadTicks() {
   try {
-    const ticks=await fetch('/api/ticks').then(r=>r.json());
+    const ticks=await fetch('/api/v1/ticks').then(r=>r.json());
     if(!ticks.length) return;
     const rl=r=>r===1?'↑ TREND':r===-1?'↓ TREND':'— RANGE';
     const rc=r=>r===1?'var(--accent)':r===-1?'var(--danger)':'var(--muted)';
@@ -914,7 +927,7 @@ function renderBars(id,data,mapper) {
 let allSyms=new Set();
 async function loadSentiment() {
   try {
-    const d = await fetch('/api/sentiment').then(r=>r.json());
+    const d = await fetch('/api/v1/sentiment').then(r=>r.json());
     if (!d || !d.analysis) return;
     const a = d.analysis;
     const score = parseFloat(a.score || 0);
@@ -1059,19 +1072,32 @@ async function loadSwarmStatus() {
     const reports = d.reports || {};
     let gridHtml = '';
     const agentIcons = {
-        macro: '🌍', quant: '📊', loss: '📉', accountant: '🧾',
-        devil: '😈', errors: '🔍', risk: '🛡️'
+        macro: '🌍', quant: '📊', sentiment: '📰', 
+        loss: '📉', devil: '😈', errors: '🔍', 
+        risk: '🛡️', compliance: '⚖️', guardian: '🕵️',
+        accountant: '🧾', regime: '🌡️', shadow: '🎮',
+        meta_arbitre: '🧠', liquidity: '💧', correlation: '🔗',
+        post_mortem: '⚰️', whale: '🐋', volatility: '📉',
+        cio: '🏛️'
     };
     const agentNames = {
-        macro: 'Macro-Économiste', quant: 'Analyste Quant', loss: 'Analyste Pertes', accountant: 'Comptable',
-        devil: 'Avocat du Diable', errors: 'Audit Erreurs', risk: 'Risk Manager'
+        macro: 'Macro-Économiste', quant: 'Analyste Quant', sentiment: 'Sentiment & News',
+        loss: 'Analyste Pertes', devil: 'Avocat du Diable', errors: 'Audit Erreurs', 
+        risk: 'Risk Manager', compliance: 'Compliance Officer', guardian: 'Guardian QA',
+        accountant: 'Comptable', regime: 'Regime Detector', shadow: 'Shadow Trader',
+        meta_arbitre: 'Meta-Arbitre', liquidity: 'Analyste Liquidité',
+        correlation: 'Corrélation Paires', post_mortem: 'Post-Mortem Analyst',
+        whale: 'Whale Tracker', volatility: 'Expert Volatilité',
+        cio: 'Chief Investment Officer'
     };
 
     for (const [key, report] of Object.entries(reports)) {
-        if (!agentIcons[key]) continue;
+        if (key === 'consensus_stats') continue;
+        const icon = agentIcons[key] || '🤖';
+        const name = agentNames[key] || key.charAt(0).toUpperCase() + key.slice(1);
         gridHtml += `
           <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
-            <div style="font-size: 11px; color: var(--accent2); font-family: var(--mono); margin-bottom: 5px;">${agentIcons[key]} ${agentNames[key]}</div>
+            <div style="font-size: 11px; color: var(--accent2); font-family: var(--mono); margin-bottom: 5px;">${icon} ${name}</div>
             <div style="font-size: 10px; line-height: 1.4; color: var(--text);">${report.substring(0, 200)}...</div>
           </div>`;
     }
@@ -1080,8 +1106,32 @@ async function loadSwarmStatus() {
   } catch(e) { console.error("Error loadSwarmStatus", e); }
 }
 
+async function loadLogs() {
+  try {
+    const r = await fetch('/api/v1/logs');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.logs) return;
+    
+    const term = document.getElementById('log-terminal');
+    const wasAtBottom = term.scrollHeight - term.clientHeight <= term.scrollTop + 20;
+    
+    let html = '';
+    d.logs.forEach(line => {
+        let color = "#0f0";
+        if (line.includes("ERROR") || line.includes("CRITICAL")) color = "var(--danger)";
+        if (line.includes("WARNING")) color = "var(--warn)";
+        if (line.includes("SUCCESS") || line.includes("PROFIT")) color = "var(--accent)";
+        html += `<div style="color: ${color}; margin-bottom: 2px;">${line}</div>`;
+    });
+    term.innerHTML = html;
+    
+    if (wasAtBottom) term.scrollTop = term.scrollHeight;
+  } catch(e) {}
+}
+
 async function refresh() {
-  await Promise.all([loadStatus(), loadTicks(), loadStats(), loadTrades(), loadGoldAnalysis(), loadSentiment(), loadLearningState(), loadSwarmStatus()]);
+  await Promise.all([loadStatus(), loadTicks(), loadStats(), loadTrades(), loadGoldAnalysis(), loadSentiment(), loadLearningState(), loadSwarmStatus(), loadLogs()]);
 }
 
 // Tickers rapides (pas de fetch)

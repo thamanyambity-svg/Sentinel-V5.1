@@ -44,10 +44,12 @@ class MT5DataClient:
     }
     
     def __init__(self, ticks_file=None):
-        self.ticks_file = ticks_file or os.path.join(
-            os.getenv("MT5_FILES_PATH", "/Users/macbookpro/Library/Application Support/net.metaquotes.wine.metatrader5/drive_c/Program Files/MetaTrader 5/MQL5/Files"),
-            "ticks_v3.json"
-        )
+        if ticks_file:
+            self.ticks_file = ticks_file
+        else:
+            from bot.bridge.mt5_path_resolver import resolve_mt5_files_path
+            root_path, _ = resolve_mt5_files_path()
+            self.ticks_file = os.path.join(root_path, "ticks_v3.json")
         logger.info(f"🔌 MT5DataClient: Connected to {self.ticks_file}")
         
         # MEMORY FOR VELOCITY CALCULATION
@@ -112,6 +114,8 @@ class MT5DataClient:
                     "bid": bid,
                     "ask": ask,
                     "spread": spread_value,
+                    "atr": tick_data.get("atr", 0),
+                    "adx": tick_data.get("adx", 0),
                     "valid": True,
                     "source": "MT5_BROKER"
                 }
@@ -180,6 +184,8 @@ class MT5DataClient:
                         bid = float(entry.get("bid", 0) or 0)
                         ask = float(entry.get("ask", bid) or bid)
                         spread_val = float(entry.get("spread", 0) or 0)
+                        atr_val = float(entry.get("atr", 0) or 0)
+                        adx_val = float(entry.get("adx", 0) or 0)
                         price = bid if bid else ask
                         resolved_symbol = entry.get("sym", symbol)
                         break
@@ -196,6 +202,8 @@ class MT5DataClient:
                             break
                 bid = price
                 ask = price
+                atr_val = 0.0
+                adx_val = 0.0
 
             if price is None:
                 logger.debug(f"Symbol {symbol} not found in ticks_v3.json")
@@ -211,6 +219,8 @@ class MT5DataClient:
                 "bid": bid if bid else price,
                 "ask": ask if ask else price,
                 "spread": spread_val,
+                "atr": atr_val,
+                "adx": adx_val,
                 "previous_close": prev_price  # Now we have REAL previous price!
             }
             

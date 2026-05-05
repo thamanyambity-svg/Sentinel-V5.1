@@ -39,7 +39,7 @@ class NewsConfig:
     BLOCK_BEFORE_MINUTES  = 30    # Bloquer N minutes AVANT la news
     BLOCK_AFTER_MINUTES   = 60    # Bloquer N minutes APRES la news
     TIER1_MULTIPLIER      = 2     # Fenetre x2 pour NFP, FOMC, etc.
-    REFRESH_INTERVAL_SEC  = 3600  # Re-fetch ForexFactory chaque heure
+    REFRESH_INTERVAL_SEC  = 7200  # Re-fetch ForexFactory toutes les 2h (anti rate-limit)
     MIN_IMPACT_TO_BLOCK   = "HIGH"  # HIGH | MEDIUM
     FF_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     HTTP_TIMEOUT          = 10    # secondes
@@ -175,15 +175,33 @@ class ForexFactoryParser:
 
     @staticmethod
     def fetch(url: str, timeout: int) -> Optional[list]:
-        try:
-            req = urllib.request.Request(
-                url, headers={"User-Agent": "Mozilla/5.0 AladdinBot/6.0"}
-            )
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except Exception as e:
-            logging.getLogger("NewsFilter").warning("ForexFactory unreachable: %s", e)
-            return None
+        import ssl, time as _time
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        log = logging.getLogger("NewsFilter")
+        
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
+                )
+                with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    wait = 60 * (2 ** attempt)  # 1min, 2min, 4min
+                    log.warning("ForexFactory rate-limited (429). Waiting %ds before retry %d/3", wait, attempt + 1)
+                    _time.sleep(wait)
+                else:
+                    log.warning("ForexFactory unreachable: %s", e)
+                    return None
+            except Exception as e:
+                log.warning("ForexFactory unreachable: %s", e)
+                return None
+        
+        log.error("ForexFactory: all retries exhausted (rate-limited). Using cache/fallback.")
+        return None
 
     @staticmethod
     def parse(raw: list) -> List[NewsEvent]:
@@ -195,17 +213,31 @@ class ForexFactoryParser:
                 elif impact_str == "MEDIUM": imp = Impact.MEDIUM
                 else:                       imp = Impact.LOW
 
-                date_str = item.get("date", "")
-                time_str = item.get("time", "")
-                combined = (date_str + " " + time_str).strip()
-
+                date_str = item.get("date", "").strip()
+                time_str = item.get("time", "").strip()
+                
                 dt = None
-                for fmt in ["%Y-%m-%d %I:%M%p", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M"]:
+                from datetime import timezone
+                
+                if "T" in date_str:
                     try:
-                        dt = datetime.strptime(combined, fmt)
-                        break
+                        dt_aware = datetime.fromisoformat(date_str)
+                        if dt_aware.tzinfo is not None:
+                            dt = dt_aware.astimezone(timezone.utc).replace(tzinfo=None)
+                        else:
+                            dt = dt_aware
                     except ValueError:
-                        continue
+                        pass
+                
+                if dt is None:
+                    combined = (date_str + " " + time_str).strip()
+                    for fmt in ["%Y-%m-%d %I:%M%p", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M"]:
+                        try:
+                            dt = datetime.strptime(combined, fmt)
+                            break
+                        except ValueError:
+                            continue
+                            
                 if dt is None:
                     continue
 
@@ -339,15 +371,21 @@ class NewsFilter:
         raw = ForexFactoryParser.fetch(self.cfg.FF_URL, self.cfg.HTTP_TIMEOUT)
         if raw:
             events = ForexFactoryParser.parse(raw)
-            self.log.info("ForexFactory OK: %d events", len(events))
+            self.log.info("ForexFactory OK: %d events parsed", len(events))
         else:
-            self.log.warning("Fallback static calendar")
-            events = build_static_calendar()
+            # Try loading the local cache before falling back to static calendar
+            events = self._load_cache_events()
+            if events:
+                self.log.warning("Fallback: loaded %d events from local cache", len(events))
+            else:
+                self.log.warning("Fallback: using static calendar (no cache available)")
+                events = build_static_calendar()
 
         cutoff = datetime.utcnow() - timedelta(hours=2)
         with self._lock:
             self._events = [e for e in events if e.dt >= cutoff]
         self._last_ref = datetime.utcnow()
+        self.log.info("Calendar loaded: %d upcoming events (past 2h filtered)", len(self._events))
 
         self._export_for_mt5()
         self._save_cache()
@@ -399,6 +437,31 @@ class NewsFilter:
         except IOError as e:
             self.log.error("Export failed: %s", e)
 
+    def _load_cache_events(self) -> list:
+        """Load previously cached events from disk as a fallback."""
+        try:
+            if not os.path.exists(self.cfg.CACHE_FILE):
+                return []
+            with open(self.cfg.CACHE_FILE, "r", encoding="utf-8") as f:
+                cache = json.load(f)
+            if not isinstance(cache, list) or not cache:
+                return []
+            events = []
+            for item in cache:
+                try:
+                    impact = Impact[item.get("impact", "LOW")]
+                    dt = datetime.fromisoformat(item["dt"])
+                    events.append(NewsEvent(
+                        eid=item["eid"], title=item["title"],
+                        currency=item["currency"], impact=impact,
+                        dt=dt, actual=item.get("actual")
+                    ))
+                except Exception:
+                    continue
+            return events
+        except Exception:
+            return []
+
     def _save_cache(self):
         try:
             with self._lock:
@@ -409,6 +472,7 @@ class NewsFilter:
                 ]
             with open(self.cfg.CACHE_FILE, "w", encoding="utf-8") as f:
                 json.dump(cache, f, indent=2)
+            self.log.info("Cache saved: %d events", len(cache))
         except IOError:
             pass
 
@@ -490,24 +554,17 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(message)s"
     )
     print("\n" + "="*60)
-    print("  ALADDIN PRO — NewsFilter Test Standalone")
+    print("  ALADDIN PRO — NewsFilter Daemon Mode")
     print("="*60)
 
-    nf = NewsFilter(mt5_path=".")
-    nf._refresh()
-
-    print()
-    print(nf.status_report())
-
-    print()
-    print("  == Statut de blocage par instrument ==")
-    instruments = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "US30Cash", "Nasdaq", "USDCAD"]
-    for sym in instruments:
-        blocked = nf.is_trading_blocked(sym)
-        reason  = nf.get_blocking_reason(sym) or "Libre — aucune restriction active"
-        status  = "[BLOQUE]" if blocked else "[OK]    "
-        print(f"  {status}  {sym:<10}  {reason}")
-
-    print()
-    print("  == MQL5 Snippet (a integrer dans OnTick) ==")
-    print(MQL5_SNIPPET)
+    nf = NewsFilter(mt5_path=NewsConfig.MT5_COMMON_FILES_PATH)
+    
+    while True:
+        try:
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Actualisation du calendrier...")
+            nf._refresh()
+            print(nf.status_report())
+        except Exception as e:
+            print(f"Erreur lors de l'actualisation : {e}")
+        
+        time.sleep(NewsConfig.REFRESH_INTERVAL_SEC)

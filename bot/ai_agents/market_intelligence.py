@@ -133,6 +133,8 @@ class MarketIntelligence:
                 "change_percent": change_pct,
                 "trend": trend,
                 "spread": data.get("spread", 0),
+                "atr": data.get("atr", 0),
+                "adx": data.get("adx", 0),
                 "valid": True
             }
             
