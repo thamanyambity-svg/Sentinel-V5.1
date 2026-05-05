@@ -27,4 +27,4 @@ Réponds UNIQUEMENT avec ce format (3 lignes max) :
 STATUT: [AUTORISÉ / VETO]
 NIVEAU RISQUE: [FAIBLE / MOYEN / ÉLEVÉ]
 CONDITION: [1 condition ou limite à respecter pour le prochain trade]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=3)

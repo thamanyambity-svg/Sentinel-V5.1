@@ -15,4 +15,4 @@ Réponds UNIQUEMENT avec ce format (3 lignes max) :
 COHÉRENCE: [FIABLE / PARTIELLE / DÉFAILLANTE]
 BIAIS DÉTECTÉ: [nom du biais ou "Aucun"]
 DÉCISION: [CONTINUER / ANNULER et reanalysées]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=2)

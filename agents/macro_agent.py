@@ -9,4 +9,4 @@ Réponds UNIQUEMENT avec ce format (3 lignes max) :
 CLIMAT: [FAVORABLE / DÉFAVORABLE / NEUTRE]
 RAISON: [1 phrase max]
 RECOMMANDATION: [RISK-ON / RISK-OFF]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=2)

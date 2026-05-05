@@ -14,4 +14,4 @@ Réponds UNIQUEMENT avec ce format (3 lignes max) :
 SANTÉ: [SAINE / SURVEILLANCE / ALARME]
 PNL: [gain/perte de X$]
 VERDICT: [1 phrase comptable courte]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=1)

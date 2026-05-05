@@ -1,3 +1,4 @@
+from agents.base import call_llm
 from news_filter import NewsFilter
 import json
 import os
@@ -52,4 +53,4 @@ def run() -> str:
     ANALYSE : (ton interprétation rapide)
     """
     
-    return prompt
+    return call_llm(prompt, tier=2)

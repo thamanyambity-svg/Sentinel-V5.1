@@ -1,3 +1,4 @@
+from agents.base import call_llm
 import json
 import os
 
@@ -65,4 +66,4 @@ def run(current_setup: dict) -> str:
     FORMAT : [STATUT] : (ton analyse statistique courte avec WR)
     """
     
-    return prompt
+    return call_llm(prompt, tier=2)

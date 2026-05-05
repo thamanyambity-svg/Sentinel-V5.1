@@ -1,3 +1,4 @@
+from agents.base import call_llm
 import holidays
 from datetime import datetime
 import pytz
@@ -62,5 +63,4 @@ def run(current_time_str: str) -> str:
     FORMAT : [STATUT] : (ton explication courte)
     """
     
-    # Appel à la base LLM (sera géré par call_llm dans l'orchestrateur)
-    return prompt
+    return call_llm(prompt, tier=1)

@@ -1,3 +1,4 @@
+from agents.base import call_llm
 import sys
 import os
 
@@ -28,8 +29,7 @@ def run(system_metrics, active_trades, running_pids):
     RECOMMANDATION QA : (action corrective pour la hiérarchie)
     """
     
-    # Simulation de l'appel LLM (sera géré par l'orchestrateur)
-    return prompt
+    return call_llm(prompt, tier=1)
 
 if __name__ == "__main__":
     print(get_guardian_report("CPU: 12%, RAM: 1.2GB", "3 positions", "8 PIDs"))

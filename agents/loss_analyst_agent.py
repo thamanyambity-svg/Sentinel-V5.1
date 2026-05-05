@@ -11,4 +11,4 @@ Réponds UNIQUEMENT avec ce format (3 lignes max) :
 DRAWDOWN: [EXCELLENT / ACCEPTABLE / PRÉOCCUPANT / CRITIQUE]
 SURTRADING: [OUI / NON]
 AMÉLIORATION: [1 conseil concret en 1 phrase]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=2)

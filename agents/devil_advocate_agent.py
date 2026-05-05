@@ -12,4 +12,4 @@ Réponds UNIQUEMENT avec ce format (3 lignes max) :
 CONTRADICTION: [la principale contradiction détectée en 1 phrase]
 RISQUE IGNORÉ: [1 risque que personne n'a mentionné]
 VERDICT: [VALIDE / CONTESTE]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=3)

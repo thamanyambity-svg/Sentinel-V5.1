@@ -14,19 +14,27 @@ def run(all_reports: dict) -> str:
     devil = all_reports.get('devil', 'N/A')[:200]
     errors = all_reports.get('errors', 'N/A')[:200]
 
-    prompt = f"""Tu es le CIO (Chief Investment Officer) d'un fonds institutionnel. Réponds en FRANÇAIS.
+    consensus = all_reports.get('consensus_stats', 'N/A')
+    shadow = all_reports.get('shadow', 'N/A')[:200]
+    meta = all_reports.get('meta_arbitre', 'N/A')[:200]
 
-Voici les rapports de ton équipe :
-MACRO: {macro}
-TECHNIQUE: {quant}
-PERTES: {loss}
-COMPTABLE: {accountant}
-AVOCAT DU DIABLE: {devil}
-ERREURS: {errors}
-RISK MANAGER: {risk}
+    prompt = f"""Tu es le CIO (Chief Investment Officer) de BlackRock. 
+    Ton équipe a voté avec des POIDS DE RÉPUTATION (V7.0).
+    
+    CONSENSUS PONDÉRÉ : {consensus}
+    SHADOW TRADER (Stats) : {shadow}
+    MÉTA-ARBITRE : {meta}
+    
+    RAPPORTS DÉTAILLÉS :
+    MACRO: {macro}
+    TECHNIQUE: {quant}
+    RISK MANAGER: {risk}
+    
+    CONSIGNE : Si le consensus est < au seuil, tu DOIS rester en ATTENTE.
+    Prends en compte le Shadow Trader (Backtest réel).
 
 Réponds UNIQUEMENT avec ce format (exactement 3 lignes) :
 DÉCISION: [ACHAT / VENTE / ATTENTE]
 JUSTIFICATION: [1 phrase max expliquant pourquoi]
 CONFIANCE: [FAIBLE / MOYEN / ÉLEVÉ]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=3)

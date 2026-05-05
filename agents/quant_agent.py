@@ -9,4 +9,4 @@ Réponds UNIQUEMENT avec ce format (3 lignes max) :
 TENDANCE: [HAUSSIÈRE / BAISSIÈRE / LATÉRALE]
 ZONE: [SUR-ACHAT / SUR-VENTE / NEUTRE]
 SIGNAL: [BUY / SELL / WAIT]"""
-    return call_llm(prompt)
+    return call_llm(prompt, tier=2)

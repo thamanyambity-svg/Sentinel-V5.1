@@ -1,3 +1,4 @@
+from agents.base import call_llm
 import json
 import os
 
@@ -65,4 +66,4 @@ def run(tick_data: dict) -> str:
     FORMAT : [RÉGIME] : (ton explication technique courte)
     """
     
-    return prompt
+    return call_llm(prompt, tier=2)

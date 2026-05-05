@@ -1,3 +1,4 @@
+from agents.base import call_llm
 import json
 import os
 
@@ -31,7 +32,7 @@ def run(current_scores: dict) -> str:
     FORMAT : [MÉTA-ANALYSE] : (ton avis sur la fiabilité actuelle de l'essaim)
     """
     
-    return prompt
+    return call_llm(prompt, tier=2)
 
 def update_agent_score(agent_name, agent_said, trade_result, current_scores):
     """

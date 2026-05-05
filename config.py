@@ -90,7 +90,7 @@ class SentinelConfig:
         self.LOG_BACKUP_COUNT       = 5
 
         # ── Risk (pour référence Python — pas pour l'EA MQL5) ────
-        self.RISK_PER_TRADE_PCT     = 0.75
+        self.RISK_PER_TRADE_PCT     = 0.5    # 0.5% — balance < $200, spread XAUUSD ~$1.50-2.00
         self.MAX_DAILY_LOSS_PCT     = 3.0
         self.MAX_WEEKLY_LOSS_PCT    = 6.0
         self.DAILY_PROFIT_TARGET    = 2.0
