@@ -4,7 +4,7 @@ Risk limits & counters
 """
 
 _TRADES_TODAY = 0
-_MAX_TRADES = 1      # ← 1 trade réel / jour
+_MAX_TRADES = 5      # ← 5 trades réels / jour
 _DAILY_PNL = 0.0
 _MAX_DAILY_LOSS = -100.0
 

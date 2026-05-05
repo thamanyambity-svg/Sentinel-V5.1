@@ -1059,12 +1059,18 @@ async function loadSwarmStatus() {
     const reports = d.reports || {};
     let gridHtml = '';
     const agentIcons = {
-        macro: '🌍', quant: '📊', loss: '📉', accountant: '🧾',
-        devil: '😈', errors: '🔍', risk: '🛡️'
+        macro: '🌍', quant: '📊', sentiment: '📰', 
+        loss: '📉', devil: '😈', errors: '🔍', 
+        risk: '🛡️', compliance: '⚖️', guardian: '🕵️',
+        accountant: '🧾', regime: '🌡️', shadow: '🎮',
+        meta_arbitre: '🧠'
     };
     const agentNames = {
-        macro: 'Macro-Économiste', quant: 'Analyste Quant', loss: 'Analyste Pertes', accountant: 'Comptable',
-        devil: 'Avocat du Diable', errors: 'Audit Erreurs', risk: 'Risk Manager'
+        macro: 'Macro-Économiste', quant: 'Analyste Quant', sentiment: 'Sentiment & News',
+        loss: 'Analyste Pertes', devil: 'Avocat du Diable', errors: 'Audit Erreurs', 
+        risk: 'Risk Manager', compliance: 'Compliance Officer', guardian: 'Guardian QA',
+        accountant: 'Comptable', regime: 'Regime Detector', shadow: 'Shadow Trader',
+        meta_arbitre: 'Meta-Arbitre'
     };
 
     for (const [key, report] of Object.entries(reports)) {

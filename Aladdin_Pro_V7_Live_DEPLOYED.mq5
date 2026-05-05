@@ -116,16 +116,8 @@ input int    MinConfluenceScore     = 1;
 
 input group "=== ML & SIMULATION ==="
 input bool   SimulationMode         = false;
-<<<<<<< ours
 input bool   EnableMLFilter         = true;  // V7.25+: Veto IA obligatoire
 input double ML_MinConfidence       = 0.75;  // V7.25+: Exigence Sniper (0.75 = 75%)
-=======
-input bool   EnableMLFilter         = true;
-input double ML_MinConfidence       = 0.75;  // V7.25 Sniper: veto IA durci à 75%
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
 
 input group "=== TRAILING STOP ==="
 input bool   EnableTrailingStop     = true;
@@ -182,11 +174,11 @@ input int    EOD_Minute              = 55;    // Minute declenchement
 input double EOD_Dominant_Lot        = 0.01;  // Lot par trade dominant
 input double EOD_Hedge_Lot           = 0.01;  // Lot par trade hedge
 input int    EOD_Dominant_Count      = 3;     // Nombre de trades dominants
-input int    EOD_Hedge_Count         = 0;     // V7.25+: Désactivé (ne pas parier contre la tendance)
-input double EOD_Dominant_SL_ATR     = 1.5;   // V7.25+: SL = 1.5 * ATR (Respiration)
-input double EOD_Dominant_TP_ATR     = 15.0;  // V7.25+: TP = 15 * ATR (Filet de sécurité)
-input double EOD_Hedge_SL_ATR        = 1.5;   // Identique aux dominants
-input double EOD_Hedge_TP_ATR        = 15.0;  // Identique aux dominants
+input int    EOD_Hedge_Count         = 2;     // V7.21: 3+2 Asymétrique
+input double EOD_Dominant_SL_ATR     = 1.5;   // SL Dominant = 1.5 * ATR
+input double EOD_Dominant_TP_ATR     = 4.0;   // TP Dominant = 4.0 * ATR
+input double EOD_Hedge_SL_ATR        = 0.3;   // SL Hedge = 0.3 * ATR (Serré)
+input double EOD_Hedge_TP_ATR        = 0.5;   // TP Hedge = 0.5 * ATR (Scalp)
 input int    EOD_MagicOffset         = 100;   // Magic = MagicNumber + offset (isolation)
 input bool   EOD_Alert_Popup         = true;  // Pop-up MT5 a l'execution
 

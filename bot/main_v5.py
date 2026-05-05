@@ -53,6 +53,8 @@ SCALP_TARGET_PCT = float(os.getenv("SCALP_TARGET_PCT", "0.0003"))
 DEFAULT_SL_PIPS_VOLATILITY = int(os.getenv("DEFAULT_SL_PIPS_VOLATILITY", "40"))
 # Cycles sans mouvement de prix = données figées (marché fermé ou stale)
 STALE_PRICE_CYCLES = int(os.getenv("STALE_PRICE_CYCLES", "5"))
+# Spread maximum autorisé pour le bypass bougies (en points)
+MAX_SPREAD = int(os.getenv("MAX_SPREAD", "50"))
 
 # Configuration V5.5 — XM Demo (GOLD uniquement)
 GOLD = ["GOLD"]
@@ -281,6 +283,19 @@ async def run_bot():
                         if len(set(round(p[1], 5) for p in recent)) == 1:
                             logger.info(f"⏭️ {asset}: Données figées (prix identique {STALE_PRICE_CYCLES} cycles), skip")
                             continue
+
+                    # --- CONDITION BYPASS BOUGIES (V7.25) ---
+                    status_ts = status.get("ts", 0)
+                    ticks_age = current_time - status_ts
+                    spread = bridge.get_current_spread(asset)
+                    
+                    if ticks_age < 5 and spread <= MAX_SPREAD:
+                        # Autoriser entrée sans check bougie (Bypass validé)
+                        pass
+                    else:
+                        # Bloquer — marché illiquide ou ticks stales
+                        logger.info(f"⏭️ {asset}: Bloqué — Liquidité insuffisante (Spread: {spread}) ou Ticks Stales ({ticks_age:.1f}s)")
+                        continue
 
                     # --- Volatility 100: Volatility Rider (M10) prioritaire, sinon IFVG, sinon ALADDIN ---
                     use_synthetics = asset in SYNTHETIC_INDICES and asset in m5_bars

@@ -111,11 +111,15 @@ class RiskOS:
             
         try:
             with open(self.history_file, 'r') as f:
-                history = json.load(f)
+                history_data = json.load(f)
+            
+            # Support both list directly or a dict with "trades" key
+            history = history_data.get("trades", []) if isinstance(history_data, dict) else history_data
+            
             if not history: return
                 
             recent = history[-ROLLING_WINDOW:]
-            wins = [t for t in recent if float(t.get('profit', 0)) > 0]
+            wins = [t for t in recent if float(t.get('pnl', t.get('profit', 0))) > 0]
             
             wr = len(wins) / len(recent) if recent else 0
             self.state["win_rate"] = round(wr * 100, 1)

@@ -243,7 +243,7 @@ def format_backtest_data(backtest: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def parse_journal_log(lines: List[str]) -> List[Dict[str, Any]]:
-    """Parse STRICT JSONL journal/audit.log - no inference/regex/mocks"""
+    """Parse JSONL audit log (bot/journal/audit.log)"""
     entries = []
 
     for line in lines:
@@ -253,19 +253,17 @@ def parse_journal_log(lines: List[str]) -> List[Dict[str, Any]]:
 
         try:
             entry = json.loads(line)
-
-            # Strict schema validation - SENTINEL architecture compliance
-            required_fields = ["id", "timestamp", "layer", "event", "message", "data", "status"]
-            if not all(field in entry for field in required_fields):
-                continue
-
+            # Adapt actual schema {"ts": ..., "event": ..., "actor": ..., "context": ...}
+            # Map 'ts' to 'timestamp' for frontend consistency
+            if "ts" in entry:
+                entry["timestamp"] = entry["ts"]
+            
             entries.append(entry)
-
         except json.JSONDecodeError:
-            continue  # Ignore invalid lines - data integrity
+            continue
 
-    # Return latest first (max 100)
-    return entries[-100:][::-1]
+    # Return latest first (max 50)
+    return entries[-50:][::-1]
 
 
 # WebSocket Live Ticks Thread
@@ -488,26 +486,31 @@ def get_backtest():
 
 
 @app.route('/api/v1/journal', methods=['GET'])
-@cache_response(ttl=2)
+@cache_response(ttl=1)
+@cross_origin()
 def get_journal():
-    """Retourne les 100 dernières entrées du journal d'exécution"""
-    log_path = Path('journal/audit.log')
+    """Retourne les 50 dernières entrées du journal d'exécution (bot/journal/audit.log)"""
+    log_path = Path('bot/journal/audit.log')
     
     if not log_path.exists():
-        return parse_journal_log([])
+        # Try fallback
+        log_path = Path('bot/logs/audit.log')
+    
+    if not log_path.exists():
+        return jsonify([])
     
     try:
         result = subprocess.run(
-            ['tail', '-100', str(log_path)],
+            ['tail', '-50', str(log_path)],
             capture_output=True,
             text=True,
             timeout=5
         )
         lines = result.stdout.strip().split('\n') if result.returncode == 0 else []
-        return parse_journal_log(lines)
+        return jsonify(parse_journal_log(lines))
     except Exception as e:
         logger.warning(f"Journal read failed: {e}")
-        return parse_journal_log([])
+        return jsonify([])
 
 
 @app.route('/api/v1/trade', methods=['POST'])
@@ -658,23 +661,6 @@ def server_error(error):
 
 # --- NEW V2 API ENDPOINTS ---
 
-@app.route('/api/v1/journal', methods=['GET'])
-@cross_origin()
-def get_journal_v1():
-    """Returns the last execution steps from terminal output or log file"""
-    try:
-        # In a real environment, read from journal.json/log
-        # For now, providing a structured dynamic feed
-        now = datetime.now().strftime('%H:%M:%S')
-        return jsonify([
-            f"[{now}] Neural Bridge: Stable (12ms)",
-            f"[{now}] AI Bias: BULLISH CONFLUENCE DETECTED",
-            f"[{now}] Liquidity Sweep confirmed at 2035.40",
-            f"[{now}] Risk validation: Kelly 0.15 PASS"
-        ]), 200
-    except Exception as e:
-        return jsonify([f"[ERROR] {str(e)}"]), 500
-
 @app.route('/api/v1/swarm/status', methods=['GET'])
 @cross_origin()
 def get_swarm_status():
@@ -799,7 +785,7 @@ def get_mobile_iframe():
 
 if __name__ == "__main__":
     # Nettoyage pré-lancement
-    os.system("fuser -k 5001/tcp || true")
+    os.system("fuser -k 5000/tcp || true")
     
     print("\n" + Colors.cyan("=" * 60))
     print(Colors.bold(Colors.cyan(" SENTINEL COMMAND CENTER - LIVE ENGINE ")))
@@ -809,4 +795,4 @@ if __name__ == "__main__":
     import threading
     threading.Thread(target=broadcast_live_ticks, daemon=True).start()
     
-    socketio.run(app, host="0.0.0.0", port=5001, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=False, allow_unsafe_werkzeug=True)

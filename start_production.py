@@ -269,6 +269,17 @@ except Exception as e:
                 log_file=logs_dir / "learning.log"
             ))
 
+        # ── 5c. V7.0 Meta-Learning Engine (Réputation) ────────────
+        meta_learning = BASE_DIR / "agents" / "learning_engine.py"
+        if meta_learning.exists():
+            comps.append(Component(
+                name="V7 Meta-Learning",
+                cmd=[PYTHON_EXE, str(meta_learning)],
+                restart_on_crash=True,
+                startup_delay=2.0,
+                log_file=logs_dir / "meta_learning.log"
+            ))
+
         # ── 5b. ML Predictor (Générateur JSON pour EA V7) ─────────
         predictor_script = BASE_DIR / "ml_predictor.py"
         if predictor_script.exists():
